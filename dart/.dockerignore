@@ -3,3 +3,4 @@ build
 .git
 .gitignore
 .pub-cache
+.dart_tool
