@@ -1,4 +1,3 @@
-# Use the official Dart image as the base
 FROM dart:stable
 
 # Install dependencies
