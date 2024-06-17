@@ -6,7 +6,7 @@
   "workspaceFolder": "/workspace",
   "customizations": {
     "vscode": {
-      "extensions": ["dart-code.dart-code", "ms-vscode-remote.remote-containers"]
+      "extensions": ["dart-code.dart-code"]
     }
   }
 }
