@@ -1,0 +1,12 @@
+{
+  "name": "Dart Template",
+  "context": "..",
+  "dockerFile": "../.glyphy/Dockerfile",
+  "appPort": ["3000:3000"],
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dart-code.dart-code", "ms-vscode-remote.remote-containers"]
+    }
+  }
+}
