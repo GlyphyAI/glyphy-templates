@@ -1,0 +1,17 @@
+[
+  {
+    "id": "GlyphyAI-flutter",
+    "title": "Flutter",
+    "description": "Kickstart your app development with this Flutter template!",
+    "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/flutter/.glyphy/icon.png",
+    "git": {
+      "path": "flutter",
+      "branch": "main",
+      "repo": "glyphy-templates",
+      "username": "GlyphyAI",
+      "commit_sha": "3fa4b556a71a49183657d97958a382e67fc503aa"
+    },
+    "author": null,
+    "createdAt": "2024-06-17T14:10:43"
+  }
+]
