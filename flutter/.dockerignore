@@ -1,0 +1,5 @@
+build
+.dockerignore
+.git
+.gitignore
+.pub-cache

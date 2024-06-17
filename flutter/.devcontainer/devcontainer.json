@@ -1,0 +1,16 @@
+{
+  "name": "Flutter Template",
+  "context": "..",
+  "dockerFile": "../.glyphy/Dockerfile",
+  "appPort": ["8080:8080", "3000:3000"],
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dart-code.flutter",
+        "dart-code.dart-code",
+        "ms-vscode-remote.remote-containers"
+      ]
+    }
+  }
+}
