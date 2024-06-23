@@ -1,43 +1,59 @@
 import express from "express";
-import appRouter from "./routers/appRouter";
-import fileRouter from "./routers/fileRouter";
-import gitRouter from "./routers/gitRouter";
-import terminalRouter from "./routers/terminalRouter";
-
-import { createServer } from "http";
+import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { Broadcaster } from "./utils/broadcaster";
 import { unwrapErrorMessage } from "./utils/zodErrors";
 
-import type { NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response, Router } from "express";
 
-const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
-const broadcaster = new Broadcaster(wss);
-
-// Inject broadcaster into the app
-app.set("broadcaster", broadcaster);
-
-app.use(express.json());
-
-app.use("/api", appRouter);
-app.use("/api", fileRouter);
-app.use("/api", gitRouter);
-app.use("/api", terminalRouter);
-
-// Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
   console.error(err.stack);
-  res.status(500).send(unwrapErrorMessage(err));
-});
+  res.status(500).json({ message: unwrapErrorMessage(err) });
+}
 
-wss.on("connection", (ws) => {
-  ws.on("message", (message: string) => {
-    console.log(`Received message: ${message}`);
-  });
+export interface IAppRegistry<T> {
+  registerRouter(path: string, setup: (app: T) => Router): void;
+}
 
-  ws.send("Welcome to the WebSocket server!");
-});
+export class App implements IAppRegistry<App> {
+  private app: Application;
+  private server: Server;
+  private wss: WebSocketServer;
+  public broadcaster: Broadcaster;
 
-export { app, server };
+  constructor() {
+    this.app = express();
+    this.server = createServer(this.app);
+    this.wss = new WebSocketServer({ server: this.server });
+    this.broadcaster = new Broadcaster(this.wss);
+
+    this.setupMiddleware();
+    this.setupWebSocket();
+  }
+
+  private setupMiddleware() {
+    this.app.use(express.json());
+    this.app.use(errorHandler);
+  }
+
+  private setupWebSocket() {
+    this.wss.on("connection", (ws) => {
+      ws.on("message", (message: string) => {
+        console.log(`Received message: ${message}`);
+      });
+
+      ws.send("Welcome to the WebSocket server!");
+    });
+  }
+
+  public registerRouter(path: string, setup: (app: App) => Router) {
+    const router = setup(this);
+    this.app.use(path, router);
+  }
+
+  public start(port: number) {
+    this.server.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  }
+}
