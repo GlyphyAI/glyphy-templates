@@ -24,14 +24,12 @@ export interface IProcessService {
 }
 
 export class ProcessService implements IProcessService {
-  private template: CommandsTemplate;
   private process: ChildProcessWithoutNullStreams | null = null;
-  private broadcaster: Broadcaster | null = null;
 
-  constructor(template: CommandsTemplate, options: { broadcaster?: Broadcaster } = {}) {
-    this.template = template;
-    this.broadcaster = options.broadcaster ?? null;
-  }
+  constructor(
+    private template: CommandsTemplate,
+    private broadcaster: Broadcaster,
+  ) {}
 
   setBroadcaster(broadcaster: Broadcaster) {
     this.broadcaster = broadcaster;
