@@ -1,7 +1,10 @@
-import { server } from "./app";
+import { App } from "./app";
+import { config } from "./config";
+import { AppRoutes } from "./routes";
 
-const port = parseInt(process.env.PORT ?? "3000");
+const app = new App();
+const appRoutes = new AppRoutes(app, config);
 
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Server is running on port ${port}`);
-});
+appRoutes.configureRoutes();
+
+app.start(config.port);
