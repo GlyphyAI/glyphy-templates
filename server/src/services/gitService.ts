@@ -10,7 +10,7 @@ export interface IGitService {
   createBranch(branch: string): Promise<void>;
   deleteBranch(branch: string): Promise<void>;
   switchBranch(branch: string): Promise<void>;
-  publishBranch(branch: string): Promise<void>;
+  publishBranch(branch: string, origin: string): Promise<void>;
   mergeBranches(branchToMerge: string, targetBranch: string): Promise<void>;
 }
 
