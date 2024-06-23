@@ -17,6 +17,7 @@ function splitCommand(command: string): [string, string[]] {
 export interface IProcessService {
   startProcess(): Promisable<void>;
   stopProcess(): Promisable<void>;
+  reloadProcess(): Promisable<void>;
   lint(): Promisable<string>;
   format(): Promisable<string>;
   buildDependencies(): Promisable<string>;
