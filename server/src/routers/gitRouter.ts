@@ -1,13 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { GitService } from "~/services/gitService";
 import { asyncHandler } from "~/utils/asyncHandler";
 
-import type { Request, Response } from "express";
-
-const router = Router();
-const repoPath = process.env.REPO_PATH ?? "/workspace";
-const gitService = new GitService(repoPath);
+import type { IGitService } from "~/services/gitService";
 
 const commitSchema = z.object({
   message: z.string(),
@@ -17,9 +12,14 @@ const branchSchema = z.object({
   branch: z.string(),
 });
 
+const pushSchema = z.object({
+  branch: z.string(),
+  remote: z.string().default("origin"),
+});
+
 const publishSchema = z.object({
   branch: z.string(),
-  remote: z.string().optional(),
+  remote: z.string().default("origin"),
 });
 
 const mergeSchema = z.object({
@@ -27,76 +27,87 @@ const mergeSchema = z.object({
   targetBranch: z.string(),
 });
 
-router.post(
-  "/git/commit",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { message } = commitSchema.parse(req.body);
-    await gitService.commit(message);
-    res.json({ message: "Commit successful" });
-  }),
-);
+class GitRouter {
+  public router: Router;
 
-router.post(
-  "/git/push",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { remote = "origin", branch = "main" } = req.query;
-    await gitService.push(remote as string, branch as string);
-    res.json({ message: "Push successful" });
-  }),
-);
+  constructor(private gitService: IGitService) {
+    this.router = Router();
+    this.routes();
+  }
 
-router.post(
-  "/git/pull",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { remote = "origin", branch = "main" } = req.query;
-    await gitService.pull(remote as string, branch as string);
-    res.json({ message: "Pull successful" });
-  }),
-);
+  private routes() {
+    this.router.post(
+      "/git/commit",
+      asyncHandler(async (req, res) => {
+        const { message } = commitSchema.parse(req.body);
+        await this.gitService.commit(message);
+        res.json({ message: "Commit successful" });
+      }),
+    );
 
-router.post(
-  "/git/branch/create",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { branch } = branchSchema.parse(req.body);
-    await gitService.createBranch(branch);
-    res.json({ message: `Branch ${branch} created successfully` });
-  }),
-);
+    this.router.post(
+      "/git/push",
+      asyncHandler(async (req, res) => {
+        const { remote, branch } = pushSchema.parse(req.body);
+        await this.gitService.push(remote, branch);
+        res.json({ message: "Push successful" });
+      }),
+    );
 
-router.post(
-  "/git/branch/delete",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { branch } = branchSchema.parse(req.body);
-    await gitService.deleteBranch(branch);
-    res.json({ message: `Branch ${branch} deleted successfully` });
-  }),
-);
+    this.router.post(
+      "/git/pull",
+      asyncHandler(async (req, res) => {
+        const { remote, branch } = pushSchema.parse(req.body);
+        await this.gitService.pull(remote, branch);
+        res.json({ message: "Pull successful" });
+      }),
+    );
 
-router.post(
-  "/git/branch/switch",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { branch } = branchSchema.parse(req.body);
-    await gitService.switchBranch(branch);
-    res.json({ message: `Switched to branch ${branch}` });
-  }),
-);
+    this.router.post(
+      "/git/branch/create",
+      asyncHandler(async (req, res) => {
+        const { branch } = branchSchema.parse(req.body);
+        await this.gitService.createBranch(branch);
+        res.json({ message: `Branch ${branch} created successfully` });
+      }),
+    );
 
-router.post(
-  "/git/branch/publish",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { branch, remote } = publishSchema.parse(req.body);
-    await gitService.publishBranch(branch, remote);
-    res.json({ message: `Branch ${branch} published successfully` });
-  }),
-);
+    this.router.post(
+      "/git/branch/delete",
+      asyncHandler(async (req, res) => {
+        const { branch } = branchSchema.parse(req.body);
+        await this.gitService.deleteBranch(branch);
+        res.json({ message: `Branch ${branch} deleted successfully` });
+      }),
+    );
 
-router.post(
-  "/git/branch/merge",
-  asyncHandler(async (req: Request, res: Response) => {
-    const { branchToMerge, targetBranch } = mergeSchema.parse(req.body);
-    await gitService.mergeBranches(branchToMerge, targetBranch);
-    res.json({ message: `Branch ${branchToMerge} merged into ${targetBranch} successfully` });
-  }),
-);
+    this.router.post(
+      "/git/branch/switch",
+      asyncHandler(async (req, res) => {
+        const { branch } = branchSchema.parse(req.body);
+        await this.gitService.switchBranch(branch);
+        res.json({ message: `Switched to branch ${branch}` });
+      }),
+    );
 
-export default router;
+    this.router.post(
+      "/git/branch/publish",
+      asyncHandler(async (req, res) => {
+        const { branch, remote } = publishSchema.parse(req.body);
+        await this.gitService.publishBranch(branch, remote);
+        res.json({ message: `Branch ${branch} published successfully` });
+      }),
+    );
+
+    this.router.post(
+      "/git/branch/merge",
+      asyncHandler(async (req, res) => {
+        const { branchToMerge, targetBranch } = mergeSchema.parse(req.body);
+        await this.gitService.mergeBranches(branchToMerge, targetBranch);
+        res.json({ message: `Branch ${branchToMerge} merged into ${targetBranch} successfully` });
+      }),
+    );
+  }
+}
+
+export default GitRouter;
