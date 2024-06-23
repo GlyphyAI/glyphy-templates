@@ -1,77 +1,65 @@
 import { Router } from "express";
-import { ProcessService } from "~/services/processService";
 import { asyncHandler } from "~/utils/asyncHandler";
-import { loadTemplate } from "~/utils/loadTemplate";
-import { unwrapErrorMessage } from "~/utils/zodErrors";
 
-import type { NextFunction, Request, Response } from "express";
-import type { Broadcaster } from "~/utils/broadcaster";
+import type { IProcessService } from "~/services/processService";
 
-const router = Router();
-const template = loadTemplate();
-const processService = new ProcessService(template.commands);
+class AppRouter {
+  public router: Router;
 
-function injectBroadcaster(req: Request, _res: Response, next: NextFunction) {
-  const broadcaster = req.app.get("broadcaster") as Broadcaster | undefined;
-  if (!broadcaster) {
-    throw new Error("Broadcaster is not available");
+  constructor(private processService: IProcessService) {
+    this.router = Router();
+    this.routes();
   }
 
-  processService.setBroadcaster(broadcaster);
-  next();
+  private routes() {
+    this.router.post(
+      "/app/start",
+      asyncHandler(async (_req, res) => {
+        await this.processService.startProcess();
+        res.json({ message: "Process started" });
+      }),
+    );
+
+    this.router.post(
+      "/app/stop",
+      asyncHandler(async (_req, res) => {
+        await this.processService.stopProcess();
+        res.json({ message: "Process stopped" });
+      }),
+    );
+
+    this.router.post(
+      "/app/reload",
+      asyncHandler(async (_req, res) => {
+        await this.processService.reloadProcess();
+        res.json({ message: "Process reloaded" });
+      }),
+    );
+
+    this.router.post(
+      "/app/lint",
+      asyncHandler(async (_req, res) => {
+        const result = await this.processService.lint();
+        res.json({ result });
+      }),
+    );
+
+    this.router.post(
+      "/app/format",
+      asyncHandler(async (_req, res) => {
+        const result = await this.processService.format();
+        res.json({ result });
+      }),
+    );
+
+    this.router.post(
+      "/app/build-dependencies",
+      asyncHandler(async (_req, res) => {
+        const result = await this.processService.buildDependencies();
+        res.json({ result });
+      }),
+    );
+  }
 }
 
-router.use(injectBroadcaster);
-
-router.post("/app/start", (_req, res) => {
-  try {
-    processService.startProcess();
-    res.json({ message: "Process started" });
-  } catch (e) {
-    res.status(500).json({ message: unwrapErrorMessage(e) });
-  }
-});
-
-router.post("/app/stop", (_req, res) => {
-  try {
-    processService.stopProcess();
-    res.json({ message: "Process stopped" });
-  } catch (e) {
-    res.status(500).json({ message: unwrapErrorMessage(e) });
-  }
-});
-
-router.post("/app/reload", (_req, res) => {
-  try {
-    processService.reloadProcess();
-    res.json({ message: "Process reloaded" });
-  } catch (e) {
-    res.status(500).json({ message: unwrapErrorMessage(e) });
-  }
-});
-
-router.post(
-  "/app/lint",
-  asyncHandler(async (_req: Request, res: Response) => {
-    const result = await processService.lint();
-    res.json({ result });
-  }),
-);
-
-router.post(
-  "/app/format",
-  asyncHandler(async (_req: Request, res: Response) => {
-    const result = await processService.format();
-    res.json({ result });
-  }),
-);
-
-router.post(
-  "/app/build-dependencies",
-  asyncHandler(async (_req: Request, res: Response) => {
-    const result = await processService.buildDependencies();
-    res.json({ result });
-  }),
-);
-
-export default router;
+export default AppRouter;
