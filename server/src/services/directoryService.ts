@@ -14,7 +14,7 @@ export interface IDirectoryService {
 export class DirectoryService implements IDirectoryService {
   async listDirectories(directory: string, options: ListOptions = {}): Promise<string[]> {
     try {
-      const patterns = options.includePatterns ?? ["*"];
+      const patterns = options.includePatterns ?? ["**/*"];
       const ignore = options.excludePatterns ?? [];
       const directories: string[] = [];
 
