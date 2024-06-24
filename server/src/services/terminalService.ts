@@ -9,6 +9,8 @@ type Terminal = {
 };
 
 export interface ITerminalService {
+  listTerminals(): string[];
+  getTerminal(id: string): Terminal | undefined;
   createTerminal(id: string, shell?: string): void;
   deleteTerminal(id: string): void;
   sendCommand(id: string, command: string): void;
@@ -18,6 +20,14 @@ export interface ITerminalService {
 
 export class TerminalService implements ITerminalService {
   private terminals = new Map<string, Terminal>();
+
+  listTerminals(): string[] {
+    return Array.from(this.terminals.keys());
+  }
+
+  getTerminal(id: string): Terminal | undefined {
+    return this.terminals.get(id);
+  }
 
   createTerminal(id: string, shell = "bash"): void {
     if (this.terminals.has(id)) {
