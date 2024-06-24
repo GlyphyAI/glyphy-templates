@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { unwrapErrorMessage } from "~/utils/zodErrors";
 
 import type { CommandsTemplate } from "~/models/template";
-import type { Broadcaster } from "~/utils/broadcaster";
+import type { IBroadcaster } from "~/utils/broadcaster";
 import type { Promisable } from "~/utils/types";
 
 function splitCommand(command: string): [string, string[]] {
@@ -28,12 +28,8 @@ export class ProcessService implements IProcessService {
 
   constructor(
     private template: CommandsTemplate,
-    private broadcaster: Broadcaster,
+    private broadcaster: IBroadcaster,
   ) {}
-
-  setBroadcaster(broadcaster: Broadcaster) {
-    this.broadcaster = broadcaster;
-  }
 
   startProcess() {
     if (this.process) {
