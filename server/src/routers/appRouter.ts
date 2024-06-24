@@ -13,7 +13,7 @@ class AppRouter {
 
   private routes() {
     this.router.post(
-      "/app/start",
+      "/start",
       asyncHandler(async (_req, res) => {
         await this.processService.startProcess();
         res.json({ message: "Process started" });
@@ -21,7 +21,7 @@ class AppRouter {
     );
 
     this.router.post(
-      "/app/stop",
+      "/stop",
       asyncHandler(async (_req, res) => {
         await this.processService.stopProcess();
         res.json({ message: "Process stopped" });
@@ -29,7 +29,7 @@ class AppRouter {
     );
 
     this.router.post(
-      "/app/reload",
+      "/reload",
       asyncHandler(async (_req, res) => {
         await this.processService.reloadProcess();
         res.json({ message: "Process reloaded" });
@@ -37,7 +37,7 @@ class AppRouter {
     );
 
     this.router.post(
-      "/app/lint",
+      "/lint",
       asyncHandler(async (_req, res) => {
         const result = await this.processService.lint();
         res.json({ result });
@@ -45,7 +45,7 @@ class AppRouter {
     );
 
     this.router.post(
-      "/app/format",
+      "/format",
       asyncHandler(async (_req, res) => {
         const result = await this.processService.format();
         res.json({ result });
@@ -53,7 +53,7 @@ class AppRouter {
     );
 
     this.router.post(
-      "/app/build-dependencies",
+      "/build-dependencies",
       asyncHandler(async (_req, res) => {
         const result = await this.processService.buildDependencies();
         res.json({ result });
