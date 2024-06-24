@@ -15,7 +15,7 @@ export interface IFileService {
 export class FileService implements IFileService {
   async listFiles(directory: string, options: ListOptions = {}): Promise<string[]> {
     try {
-      const patterns = options.includePatterns ?? ["*"];
+      const patterns = options.includePatterns ?? ["**/*"];
       const ignore = options.excludePatterns ?? [];
       const files: string[] = [];
 
