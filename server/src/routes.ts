@@ -1,7 +1,7 @@
-import AppRouter from "./routers/appRouter";
 import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
+import ProcessRouter from "./routers/processRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
 import { DirectoryService } from "./services/directoryService";
@@ -21,11 +21,11 @@ export class AppRoutes {
   ) {}
 
   public configureRoutes() {
-    this.appRegistry.registerRouter("/api/app", (app) => {
+    this.appRegistry.registerRouter("/api/process", (app) => {
       const template = loadTemplate();
       const processService = new ProcessService(template.commands, app.broadcaster);
-      const appRouter = new AppRouter(processService);
-      return appRouter.router;
+      const processRouter = new ProcessRouter(processService);
+      return processRouter.router;
     });
 
     this.appRegistry.registerRouter("/api/file", () => {
