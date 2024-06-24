@@ -14,13 +14,17 @@ function splitCommand(command: string): [string, string[]] {
   return [cmd, args];
 }
 
+interface RunOptions {
+  captureErrors: boolean;
+}
+
 export interface IProcessService {
   startProcess(): Promisable<void>;
   stopProcess(): Promisable<void>;
   reloadProcess(): Promisable<void>;
-  lint(): Promisable<string>;
-  format(): Promisable<string>;
-  install(): Promisable<string>;
+  lint(options: RunOptions): Promisable<string>;
+  format(options: RunOptions): Promisable<string>;
+  install(options: RunOptions): Promisable<string>;
 }
 
 export class ProcessService implements IProcessService {
@@ -85,11 +89,7 @@ export class ProcessService implements IProcessService {
     }
   }
 
-  private async runCommand(
-    command: string,
-    cwd: string,
-    includeErrorsInOutput = false,
-  ): Promise<string> {
+  private async runCommand(command: string, cwd: string, captureErrors = false): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const [cmd, args] = splitCommand(command);
       const process = spawn(cmd, args, { cwd });
@@ -102,7 +102,7 @@ export class ProcessService implements IProcessService {
       process.stderr.on("data", (data: Buffer) => {
         const errorOutput = data.toString();
         console.error(`stderr: ${errorOutput}`);
-        if (includeErrorsInOutput) {
+        if (captureErrors) {
           result += errorOutput;
         } else {
           reject(errorOutput);
@@ -110,7 +110,7 @@ export class ProcessService implements IProcessService {
       });
 
       process.on("close", (code: number) => {
-        if (code === 0 || includeErrorsInOutput) {
+        if (code === 0 || captureErrors) {
           resolve(result);
         } else {
           reject(`Process exited with code ${code}`);
@@ -124,7 +124,7 @@ export class ProcessService implements IProcessService {
     });
   }
 
-  async lint(): Promise<string> {
+  async lint(options = { captureErrors: true }): Promise<string> {
     if (!this.template.lintCommand) {
       throw new Error("Lint command not defined");
     }
@@ -133,7 +133,7 @@ export class ProcessService implements IProcessService {
       const result = await this.runCommand(
         this.template.lintCommand,
         this.template.workingDirectory,
-        true,
+        options.captureErrors,
       );
 
       this.broadcaster?.broadcast({ type: "lint", data: result });
@@ -145,7 +145,7 @@ export class ProcessService implements IProcessService {
     }
   }
 
-  async format(): Promise<string> {
+  async format(options = { captureErrors: false }): Promise<string> {
     if (!this.template.formatCommand) {
       throw new Error("Format command not defined");
     }
@@ -154,6 +154,7 @@ export class ProcessService implements IProcessService {
       const result = await this.runCommand(
         this.template.formatCommand,
         this.template.workingDirectory,
+        options.captureErrors,
       );
 
       this.broadcaster?.broadcast({ type: "format", data: result });
@@ -165,7 +166,7 @@ export class ProcessService implements IProcessService {
     }
   }
 
-  async install(): Promise<string> {
+  async install(options = { captureErrors: false }): Promise<string> {
     if (!this.template.buildDependenciesCommand) {
       throw new Error("Build dependencies command not defined");
     }
@@ -174,6 +175,7 @@ export class ProcessService implements IProcessService {
       const result = await this.runCommand(
         this.template.buildDependenciesCommand,
         this.template.workingDirectory,
+        options.captureErrors,
       );
 
       this.broadcaster?.broadcast({ type: "build_dependencies", data: result });
