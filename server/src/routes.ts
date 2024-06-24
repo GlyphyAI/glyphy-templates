@@ -1,8 +1,10 @@
 import AppRouter from "./routers/appRouter";
+import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
+import { DirectoryService } from "./services/directoryService";
 import { FileService } from "./services/fileService";
 import { GitService } from "./services/gitService";
 import { ProcessService } from "./services/processService";
@@ -30,6 +32,12 @@ export class AppRoutes {
       const fileService = new FileService();
       const fileRouter = new FileRouter(fileService);
       return fileRouter.router;
+    });
+
+    this.appRegistry.registerRouter("/api/directory", () => {
+      const directoryService = new DirectoryService();
+      const directoryRouter = new DirectoryRouter(directoryService);
+      return directoryRouter.router;
     });
 
     this.appRegistry.registerRouter("/api/git", () => {
