@@ -32,7 +32,7 @@ class TerminalRouter {
 
   private routes() {
     this.router.post(
-      "/terminals/create",
+      "/create",
       asyncHandler(async (req, res) => {
         const { id, shell } = createSchema.parse(req.body);
 
@@ -56,7 +56,7 @@ class TerminalRouter {
     );
 
     this.router.delete(
-      "/terminals/delete",
+      "/delete",
       asyncHandler(async (req, res) => {
         const { id } = deleteSchema.parse(req.body);
         this.terminalService.deleteTerminal(id);
@@ -65,7 +65,7 @@ class TerminalRouter {
     );
 
     this.router.post(
-      "/terminals/send",
+      "/send",
       asyncHandler(async (req, res) => {
         const { id, command } = sendSchema.parse(req.body);
         this.terminalService.sendCommand(id, command);
