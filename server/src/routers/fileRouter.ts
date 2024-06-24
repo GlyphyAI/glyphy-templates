@@ -1,16 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
+import { listOptionsSchema } from "~/models/fs";
 import { asyncHandler } from "~/utils/asyncHandler";
 
 import type { IFileService } from "~/services/fileService";
 
-const parseCommaSeparated = (val: unknown) => (typeof val === "string" ? val.split(",") : val);
-
-const listingSchema = z.object({
+const filesSchema = listOptionsSchema.extend({
   directory: z.string(),
-  includePatterns: z.preprocess(parseCommaSeparated, z.array(z.string()).optional()),
-  excludePatterns: z.preprocess(parseCommaSeparated, z.array(z.string()).optional()),
-  recursive: z.preprocess((val) => val === "true", z.boolean().optional()),
 });
 
 const fileSchema = z.object({
@@ -23,10 +19,6 @@ const renameMoveSchema = z.object({
   newPath: z.string(),
 });
 
-const directoryPathSchema = z.object({
-  directoryPath: z.string(),
-});
-
 class FileRouter {
   public router: Router;
 
@@ -36,20 +28,15 @@ class FileRouter {
   }
 
   private routes() {
-    this.filesRoutes();
-    this.directoriesRoutes();
-  }
-
-  private filesRoutes() {
     this.router.get(
-      "/files/list",
+      "/list",
       asyncHandler(async (req, res) => {
         const {
           directory,
           includePatterns: globs,
           excludePatterns: ignore,
           recursive,
-        } = listingSchema.parse(req.query);
+        } = filesSchema.parse(req.query);
         const files = await this.fileService.listFiles(directory, {
           includePatterns: globs,
           excludePatterns: ignore,
@@ -60,7 +47,7 @@ class FileRouter {
     );
 
     this.router.post(
-      "/files/create",
+      "/create",
       asyncHandler(async (req, res) => {
         const { filePath, content } = fileSchema.parse(req.body);
         await this.fileService.createFile(filePath, content ?? "");
@@ -69,7 +56,7 @@ class FileRouter {
     );
 
     this.router.put(
-      "/files/update",
+      "/update",
       asyncHandler(async (req, res) => {
         const { filePath, content } = fileSchema.parse(req.body);
         await this.fileService.updateFile(filePath, content ?? "");
@@ -78,7 +65,7 @@ class FileRouter {
     );
 
     this.router.post(
-      "/files/rename",
+      "/rename",
       asyncHandler(async (req, res) => {
         const { oldPath, newPath } = renameMoveSchema.parse(req.body);
         await this.fileService.renameFile(oldPath, newPath);
@@ -87,7 +74,7 @@ class FileRouter {
     );
 
     this.router.post(
-      "/files/move",
+      "/move",
       asyncHandler(async (req, res) => {
         const { oldPath, newPath } = renameMoveSchema.parse(req.body);
         await this.fileService.moveFile(oldPath, newPath);
@@ -96,67 +83,11 @@ class FileRouter {
     );
 
     this.router.delete(
-      "/files/remove",
+      "/remove",
       asyncHandler(async (req, res) => {
         const { filePath } = fileSchema.parse(req.body);
         await this.fileService.deleteFile(filePath);
         res.json({ message: `File ${filePath} deleted successfully` });
-      }),
-    );
-  }
-
-  private directoriesRoutes() {
-    this.router.get(
-      "/directories/list",
-      asyncHandler(async (req, res) => {
-        const {
-          directory,
-          includePatterns: globs,
-          excludePatterns: ignore,
-          recursive,
-        } = listingSchema.parse(req.query);
-        const directories = await this.fileService.listDirectories(directory, {
-          includePatterns: globs,
-          excludePatterns: ignore,
-          recursive,
-        });
-        res.json(directories);
-      }),
-    );
-
-    this.router.post(
-      "/directories/create",
-      asyncHandler(async (req, res) => {
-        const { directoryPath } = directoryPathSchema.parse(req.body);
-        await this.fileService.createDirectory(directoryPath);
-        res.json({ message: `Directory ${directoryPath} created successfully` });
-      }),
-    );
-
-    this.router.post(
-      "/directories/rename",
-      asyncHandler(async (req, res) => {
-        const { oldPath, newPath } = renameMoveSchema.parse(req.body);
-        await this.fileService.renameFile(oldPath, newPath);
-        res.json({ message: `Directory ${oldPath} renamed to ${newPath} successfully` });
-      }),
-    );
-
-    this.router.post(
-      "/directories/move",
-      asyncHandler(async (req, res) => {
-        const { oldPath, newPath } = renameMoveSchema.parse(req.body);
-        await this.fileService.moveFile(oldPath, newPath);
-        res.json({ message: `Directory ${oldPath} moved to ${newPath} successfully` });
-      }),
-    );
-
-    this.router.delete(
-      "/directories/remove",
-      asyncHandler(async (req, res) => {
-        const { directoryPath } = directoryPathSchema.parse(req.body);
-        await this.fileService.deleteDirectory(directoryPath);
-        res.json({ message: `Directory ${directoryPath} deleted successfully` });
       }),
     );
   }
