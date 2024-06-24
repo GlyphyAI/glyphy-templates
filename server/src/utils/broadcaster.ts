@@ -5,7 +5,11 @@ type BroadcastData = {
   data: string;
 };
 
-export class Broadcaster {
+export interface IBroadcaster {
+  broadcast(data: BroadcastData): void;
+}
+
+export class Broadcaster implements IBroadcaster {
   private wss: WebSocketServer | null = null;
 
   constructor(wss: WebSocketServer) {
