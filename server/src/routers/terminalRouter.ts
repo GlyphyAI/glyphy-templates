@@ -3,7 +3,7 @@ import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
 import type { ITerminalService } from "~/services/terminalService";
-import type { Broadcaster } from "~/utils/broadcaster";
+import type { IBroadcaster } from "~/utils/broadcaster";
 
 const createSchema = z.object({
   id: z.string(),
@@ -24,7 +24,7 @@ class TerminalRouter {
 
   constructor(
     private terminalService: ITerminalService,
-    private broadcaster: Broadcaster,
+    private broadcaster: IBroadcaster,
   ) {
     this.router = Router();
     this.routes();
