@@ -1,4 +1,4 @@
-import { EventEmitter } from "events";
+import type { EventEmitter } from "events";
 import { spawn, type IPty } from "node-pty";
 
 const nodeProcess = process;
@@ -21,6 +21,8 @@ export interface ITerminalService {
 export class TerminalService implements ITerminalService {
   private terminals = new Map<string, Terminal>();
 
+  constructor(private emitter: EventEmitter) {}
+
   listTerminals(): string[] {
     return Array.from(this.terminals.keys());
   }
@@ -39,18 +41,17 @@ export class TerminalService implements ITerminalService {
       cwd: nodeProcess.env.HOME,
       env: nodeProcess.env,
     });
-    const emitter = new EventEmitter();
 
     process.onData((data: string) => {
-      emitter.emit("output", data);
+      this.emitter.emit("output", data);
     });
 
     process.onExit(({ exitCode }) => {
-      emitter.emit("close", exitCode);
+      this.emitter.emit("close", exitCode);
       this.terminals.delete(id);
     });
 
-    this.terminals.set(id, { process, emitter });
+    this.terminals.set(id, { process, emitter: this.emitter });
   }
 
   deleteTerminal(id: string): void {
