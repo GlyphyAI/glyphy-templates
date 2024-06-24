@@ -19,26 +19,26 @@ export class AppRoutes {
   ) {}
 
   public configureRoutes() {
-    this.appRegistry.registerRouter("/api", (app) => {
+    this.appRegistry.registerRouter("/api/app", (app) => {
       const template = loadTemplate();
       const processService = new ProcessService(template.commands, app.broadcaster);
       const appRouter = new AppRouter(processService);
       return appRouter.router;
     });
 
-    this.appRegistry.registerRouter("/api", () => {
+    this.appRegistry.registerRouter("/api/file", () => {
       const fileService = new FileService();
       const fileRouter = new FileRouter(fileService);
       return fileRouter.router;
     });
 
-    this.appRegistry.registerRouter("/api", () => {
+    this.appRegistry.registerRouter("/api/git", () => {
       const gitService = new GitService(this.config.repoPath);
       const gitRouter = new GitRouter(gitService);
       return gitRouter.router;
     });
 
-    this.appRegistry.registerRouter("/api", (app) => {
+    this.appRegistry.registerRouter("/api/terminal", (app) => {
       const terminalService = new TerminalService();
       const terminalRouter = new TerminalRouter(terminalService, app.broadcaster);
       return terminalRouter.router;
