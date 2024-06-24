@@ -53,9 +53,9 @@ class ProcessRouter {
     );
 
     this.router.post(
-      "/build-dependencies",
+      "/install",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.buildDependencies();
+        const result = await this.processService.install();
         res.json({ result });
       }),
     );

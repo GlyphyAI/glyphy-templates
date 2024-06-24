@@ -20,7 +20,7 @@ export interface IProcessService {
   reloadProcess(): Promisable<void>;
   lint(): Promisable<string>;
   format(): Promisable<string>;
-  buildDependencies(): Promisable<string>;
+  install(): Promisable<string>;
 }
 
 export class ProcessService implements IProcessService {
@@ -169,7 +169,7 @@ export class ProcessService implements IProcessService {
     }
   }
 
-  async buildDependencies(): Promise<string> {
+  async install(): Promise<string> {
     if (!this.template.buildDependenciesCommand) {
       throw new Error("Build dependencies command not defined");
     }
