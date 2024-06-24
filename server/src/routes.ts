@@ -11,6 +11,7 @@ import { ProcessService } from "./services/processService";
 import { TerminalService } from "./services/terminalService";
 import { loadTemplate } from "./utils/loadTemplate";
 
+import { EventEmitter } from "stream";
 import type { App, IAppRegistry } from "./app";
 import type { Config } from "./config";
 
@@ -47,7 +48,8 @@ export class AppRoutes {
     });
 
     this.appRegistry.registerRouter("/api/terminal", (app) => {
-      const terminalService = new TerminalService();
+      const eventEmitter = new EventEmitter();
+      const terminalService = new TerminalService(eventEmitter);
       const terminalRouter = new TerminalRouter(terminalService, app.broadcaster);
       return terminalRouter.router;
     });
