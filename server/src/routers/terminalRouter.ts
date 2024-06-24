@@ -10,7 +10,7 @@ const createSchema = z.object({
   shell: z.string().optional(),
 });
 
-const deleteSchema = z.object({
+const getDeleteSchema = z.object({
   id: z.string(),
 });
 
@@ -31,6 +31,23 @@ class TerminalRouter {
   }
 
   private routes() {
+    this.router.get(
+      "/list",
+      asyncHandler(async (_req, res) => {
+        const terminals = this.terminalService.listTerminals();
+        res.json({ terminals });
+      }),
+    );
+
+    this.router.get(
+      "/get",
+      asyncHandler(async (req, res) => {
+        const { id } = getDeleteSchema.parse(req.query);
+        const terminal = this.terminalService.getTerminal(id);
+        res.json({ terminal });
+      }),
+    );
+
     this.router.post(
       "/create",
       asyncHandler(async (req, res) => {
@@ -58,7 +75,7 @@ class TerminalRouter {
     this.router.delete(
       "/delete",
       asyncHandler(async (req, res) => {
-        const { id } = deleteSchema.parse(req.body);
+        const { id } = getDeleteSchema.parse(req.body);
         this.terminalService.deleteTerminal(id);
         res.json({ message: `Terminal ${id} deleted successfully` });
       }),
