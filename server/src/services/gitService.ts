@@ -12,6 +12,9 @@ export interface IGitService {
   switchBranch(branch: string): Promise<void>;
   publishBranch(branch: string, origin: string): Promise<void>;
   mergeBranches(branchToMerge: string, targetBranch: string): Promise<void>;
+  listTags(): Promise<string[]>;
+  tagCommit(tag: string, message?: string): Promise<void>;
+  switchTag(tag: string): Promise<void>;
 }
 
 export class GitService implements IGitService {
@@ -89,6 +92,31 @@ export class GitService implements IGitService {
     try {
       await this.git.checkout(targetBranch);
       await this.git.merge([branchToMerge]);
+    } catch (error) {
+      throw new Error(unwrapErrorMessage(error));
+    }
+  }
+
+  async listTags(): Promise<string[]> {
+    try {
+      const tags = await this.git.tags();
+      return tags.all;
+    } catch (error) {
+      throw new Error(unwrapErrorMessage(error));
+    }
+  }
+
+  async tagCommit(tag: string, message = ""): Promise<void> {
+    try {
+      await this.git.addAnnotatedTag(tag, message);
+    } catch (error) {
+      throw new Error(unwrapErrorMessage(error));
+    }
+  }
+
+  async switchTag(tag: string): Promise<void> {
+    try {
+      await this.git.checkout(tag);
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }

@@ -27,6 +27,11 @@ const mergeSchema = z.object({
   targetBranch: z.string(),
 });
 
+const tagSchema = z.object({
+  tag: z.string(),
+  message: z.string(),
+});
+
 class GitRouter {
   public router: Router;
 
@@ -105,6 +110,32 @@ class GitRouter {
         const { branchToMerge, targetBranch } = mergeSchema.parse(req.body);
         await this.gitService.mergeBranches(branchToMerge, targetBranch);
         res.json({ message: `Branch ${branchToMerge} merged into ${targetBranch} successfully` });
+      }),
+    );
+
+    this.router.get(
+      "/tag",
+      asyncHandler(async (req, res) => {
+        const tags = await this.gitService.listTags();
+        res.json({ tags });
+      }),
+    );
+
+    this.router.post(
+      "/tag/create",
+      asyncHandler(async (req, res) => {
+        const { tag, message } = tagSchema.parse(req.body);
+        await this.gitService.tagCommit(tag, message);
+        res.json({ message: `Tag ${tag} created successfully` });
+      }),
+    );
+
+    this.router.post(
+      "/tag/switch",
+      asyncHandler(async (req, res) => {
+        const { tag } = z.object({ tag: z.string() }).parse(req.body);
+        await this.gitService.switchTag(tag);
+        res.json({ message: `Switched to tag ${tag}` });
       }),
     );
   }
