@@ -37,7 +37,7 @@ class GitRouter {
 
   private routes() {
     this.router.post(
-      "/git/commit",
+      "/commit",
       asyncHandler(async (req, res) => {
         const { message } = commitSchema.parse(req.body);
         await this.gitService.commit(message);
@@ -46,7 +46,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/push",
+      "/push",
       asyncHandler(async (req, res) => {
         const { remote, branch } = pushSchema.parse(req.body);
         await this.gitService.push(remote, branch);
@@ -55,7 +55,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/pull",
+      "/pull",
       asyncHandler(async (req, res) => {
         const { remote, branch } = pushSchema.parse(req.body);
         await this.gitService.pull(remote, branch);
@@ -64,7 +64,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/branch/create",
+      "/branch/create",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.createBranch(branch);
@@ -73,7 +73,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/branch/delete",
+      "/branch/delete",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.deleteBranch(branch);
@@ -82,7 +82,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/branch/switch",
+      "/branch/switch",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.switchBranch(branch);
@@ -91,7 +91,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/branch/publish",
+      "/branch/publish",
       asyncHandler(async (req, res) => {
         const { branch, remote } = publishSchema.parse(req.body);
         await this.gitService.publishBranch(branch, remote);
@@ -100,7 +100,7 @@ class GitRouter {
     );
 
     this.router.post(
-      "/git/branch/merge",
+      "/branch/merge",
       asyncHandler(async (req, res) => {
         const { branchToMerge, targetBranch } = mergeSchema.parse(req.body);
         await this.gitService.mergeBranches(branchToMerge, targetBranch);
