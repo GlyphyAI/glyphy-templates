@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
-import { Broadcaster } from "./utils/broadcaster";
+import { Broadcaster, type IBroadcaster } from "./utils/broadcaster";
 import { unwrapErrorMessage } from "./utils/zodErrors";
 
 import type { Application, NextFunction, Request, Response, Router } from "express";
@@ -19,7 +19,7 @@ export class App implements IAppRegistry<App> {
   private app: Application;
   private server: Server;
   private wss: WebSocketServer;
-  public broadcaster: Broadcaster;
+  public broadcaster: IBroadcaster;
 
   constructor() {
     this.app = express();
