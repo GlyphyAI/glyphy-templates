@@ -46,4 +46,5 @@ WORKDIR /server
 # Entrypoint sets up the SSH keys
 ENTRYPOINT ["/entrypoint.sh"]
 
+# Start the web-server
 CMD ["npm", "run", "dev"]
