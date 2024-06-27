@@ -29,6 +29,10 @@ export class GitService implements IGitService {
     };
 
     this.git = simpleGit(options);
+
+    async () => {
+      await this.setupGitConfig();
+    };
   }
 
   async commit(message: string): Promise<void> {
@@ -120,5 +124,10 @@ export class GitService implements IGitService {
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
+  }
+
+  private async setupGitConfig() {
+    await this.git.addConfig("user.name", "glyphyai-hub[bot]");
+    await this.git.addConfig("user.email", "173952421+glyphyai-hub[bot]@users.noreply.github.com");
   }
 }
