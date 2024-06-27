@@ -23,7 +23,7 @@ export class AppRoutes {
 
   public configureRoutes() {
     this.appRegistry.registerRouter("/api/process", (app) => {
-      const template = loadTemplate();
+      const template = loadTemplate(this.config);
       const processService = new ProcessService(template.commands, app.broadcaster);
       const processRouter = new ProcessRouter(processService);
       return processRouter.router;
