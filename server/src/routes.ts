@@ -11,7 +11,7 @@ import { ProcessService } from "./services/processService";
 import { TerminalService } from "./services/terminalService";
 import { loadTemplate } from "./utils/loadTemplate";
 
-import { EventEmitter } from "stream";
+import { EventEmitter } from "node:events";
 import type { App, IAppRegistry } from "./app";
 import type { Config } from "./config";
 
