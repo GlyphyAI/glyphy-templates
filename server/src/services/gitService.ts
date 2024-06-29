@@ -1,7 +1,7 @@
 import { simpleGit } from "simple-git";
 import { unwrapErrorMessage } from "~/utils/zodErrors";
 
-import type { SimpleGit, SimpleGitOptions } from "simple-git";
+import type { SimpleGit } from "simple-git";
 
 export interface IGitService {
   commit(message: string): Promise<void>;
@@ -21,14 +21,12 @@ export class GitService implements IGitService {
   private git: SimpleGit;
 
   constructor(repoPath: string) {
-    const options: Partial<SimpleGitOptions> = {
+    this.git = simpleGit({
       baseDir: repoPath,
       maxConcurrentProcesses: 6,
       config: [],
       trimmed: false,
-    };
-
-    this.git = simpleGit(options);
+    });
 
     void this.setupGitConfig();
   }
