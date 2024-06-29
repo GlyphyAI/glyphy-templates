@@ -30,9 +30,7 @@ export class GitService implements IGitService {
 
     this.git = simpleGit(options);
 
-    async () => {
-      await this.setupGitConfig();
-    };
+    void this.setupGitConfig();
   }
 
   async commit(message: string): Promise<void> {
