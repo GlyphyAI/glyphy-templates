@@ -5,6 +5,6 @@ import { AppRoutes } from "./routes";
 const app = new App();
 const appRoutes = new AppRoutes(app, config);
 
-appRoutes.configureRoutes();
+await appRoutes.configureRoutes();
 
 app.start(config.port);
