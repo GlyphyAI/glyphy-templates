@@ -31,12 +31,11 @@ const mockSimpleGit = {
 
 describe("GitService", () => {
   let gitService: GitService;
-  const repoPath = "/test/repo";
 
   beforeEach(() => {
     jest.clearAllMocks();
     (simpleGit as jest.Mock).mockReturnValue(mockSimpleGit);
-    gitService = new GitService(repoPath);
+    gitService = new GitService(mockSimpleGit);
   });
 
   test("commit should add and commit files", async () => {
