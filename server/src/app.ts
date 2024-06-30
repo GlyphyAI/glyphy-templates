@@ -1,10 +1,12 @@
 import express from "express";
+
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
-import { Broadcaster, type IBroadcaster } from "./utils/broadcaster";
-import { unwrapErrorMessage } from "./utils/zodErrors";
+import { Broadcaster, type IBroadcaster } from "~/utils/broadcaster";
+import { unwrapErrorMessage } from "~/utils/zodErrors";
 
 import type { Application, NextFunction, Request, Response, Router } from "express";
+import type { Promisable } from "~/utils/types";
 
 function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
   console.error(err.stack);
@@ -12,7 +14,7 @@ function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunct
 }
 
 export interface IAppRegistry<T> {
-  registerRouter(path: string, setup: (app: T) => Router): void;
+  registerRouter(path: string, builder: (app: T) => Promisable<Router>): Promisable<void>;
 }
 
 export class App implements IAppRegistry<App> {
@@ -46,8 +48,8 @@ export class App implements IAppRegistry<App> {
     });
   }
 
-  public registerRouter(path: string, setup: (app: App) => Router) {
-    const router = setup(this);
+  public async registerRouter(path: string, builder: (app: App) => Router | Promise<Router>) {
+    const router = await builder(this);
     this.app.use(path, router);
   }
 
