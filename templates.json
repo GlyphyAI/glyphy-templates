@@ -9,7 +9,7 @@
       "branch": "main",
       "repo": "glyphy-templates",
       "username": "GlyphyAI",
-      "commit_sha": "3fa4b556a71a49183657d97958a382e67fc503aa"
+      "commitSha": "bd55b2e2e6c75066ded5878d9efddebe09d644e7"
     },
     "author": null,
     "createdAt": "2024-06-17T14:10:43"
@@ -24,7 +24,7 @@
       "branch": "main",
       "repo": "glyphy-templates",
       "username": "GlyphyAI",
-      "commit_sha": "23ea6870622db1868e0230a6dd4bbbd8173f14e7"
+      "commitSha": "bd55b2e2e6c75066ded5878d9efddebe09d644e7"
     },
     "author": null,
     "createdAt": "2024-06-17T17:31:19"
