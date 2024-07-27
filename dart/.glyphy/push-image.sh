@@ -7,8 +7,8 @@ if [ -z "$GITHUB_USERNAME" ]; then
 fi
 
 if [ -z "$GITHUB_PAT" ]; then
-    echo "Error: GITHUB_TOKEN is not set."
-    echo "Usage: export GITHUB_TOKEN=<your-github-token>"
+    echo "Error: GITHUB_PAT is not set."
+    echo "Usage: export GITHUB_PAT=<your-github-token>"
     exit 1
 fi
 
