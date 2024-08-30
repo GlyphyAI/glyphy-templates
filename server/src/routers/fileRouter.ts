@@ -46,6 +46,15 @@ class FileRouter {
       }),
     );
 
+    this.router.get(
+      "/read",
+      asyncHandler(async (req, res) => {
+        const { filePath } = fileSchema.parse(req.query);
+        const content = await this.fileService.readFile(filePath);
+        res.json({ content });
+      }),
+    );
+
     this.router.post(
       "/create",
       asyncHandler(async (req, res) => {
