@@ -1,5 +1,6 @@
-# ALL custom templates must use GlyphyAI's template-base image
 FROM ghcr.io/glyphyai/template-base:latest
+
+RUN groupadd -r appuser && useradd -r -g appuser -s /bin/bash appuser
 
 RUN apt-get update && apt-get install -y \
     wget \
@@ -7,44 +8,29 @@ RUN apt-get update && apt-get install -y \
     libglu1-mesa \
     xz-utils \
     curl \
+    gosu \
+    git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /workspace/app /home/appuser /server \
+    && chown -R appuser:appuser /workspace /home/appuser /server
+
 ENV FLUTTER_ROOT="/opt/flutter"
 ENV PATH="${FLUTTER_ROOT}/bin:${PATH}"
-
-# Set a default channel (branch)
 ARG channel=stable
 
-# Install Flutter
-RUN git clone -b $channel https://github.com/flutter/flutter "${FLUTTER_ROOT}"
+RUN git clone -b $channel https://github.com/flutter/flutter "${FLUTTER_ROOT}" \
+    && chown -R appuser:appuser /opt/flutter
 
-# Enable Flutter Web
-RUN flutter config --enable-web --disable-analytics
+USER appuser
 
-# Perform a doctor run
-RUN flutter doctor -v
+RUN flutter config --enable-web --disable-analytics && \
+    flutter doctor -v && \
+    flutter precache --web
 
-# Precache Flutter Web
-RUN flutter precache --web
-
-# Set the working directory for the Flutter app
-WORKDIR /workspace
-
-# Copy the Flutter app source code into the container
-COPY . .
-
-# Fetch dependencies for the Flutter app
-RUN flutter pub get
-
-# Expose the ports
 EXPOSE 3000 8080
 
-# Switch workdir to start a web-server
-WORKDIR /server
-
-# Entrypoint sets up the SSH keys
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Start the web-server
 CMD ["npm", "run", "dev"]
