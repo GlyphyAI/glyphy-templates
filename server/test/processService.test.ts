@@ -17,25 +17,23 @@ jest.mock("~/utils/zodErrors", () => ({
 
 describe("ProcessService", () => {
   let processService: IProcessService;
-  let template: CommandsTemplate;
+  let commandsTemplate: CommandsTemplate;
   let broadcaster: IBroadcaster;
   let mockProcess: ChildProcessWithoutNullStreams;
 
   beforeEach(() => {
-    template = {
-      startCommand: "echo start",
-      lintCommand: "echo lint",
-      formatCommand: "echo format",
-      buildDependenciesCommand: "echo install",
-      workingDirectory: ".",
-      startOnInitialize: false,
+    commandsTemplate = {
+      start: "echo start",
+      lint: "echo lint",
+      format: "echo format",
+      install: "echo install",
     };
 
     broadcaster = {
       broadcast: jest.fn(),
     };
 
-    processService = new ProcessService(template, broadcaster);
+    processService = new ProcessService({ commandsTemplate, broadcaster, workingDirectory: "." });
 
     mockProcess = {
       stdout: {
