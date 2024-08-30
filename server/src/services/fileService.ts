@@ -5,6 +5,7 @@ import { unwrapErrorMessage } from "~/utils/zodErrors";
 
 export interface IFileService {
   listFiles(directory: string, options?: ListOptions): Promise<string[]>;
+  readFile(filePath: string): Promise<string>;
   createFile(filePath: string, content: string): Promise<void>;
   deleteFile(filePath: string): Promise<void>;
   updateFile(filePath: string, content: string): Promise<void>;
@@ -33,6 +34,14 @@ export class FileService implements IFileService {
       }
 
       return files;
+    } catch (error) {
+      throw new Error(unwrapErrorMessage(error));
+    }
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    try {
+      return fs.readFile(filePath, "utf-8");
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
