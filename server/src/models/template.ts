@@ -3,12 +3,10 @@ import { z } from "zod";
 export const templateSchema = z
   .object({
     commands: z.object({
-      startCommand: z.string(),
-      lintCommand: z.string().optional(),
-      formatCommand: z.string().optional(),
-      buildDependenciesCommand: z.string().optional(),
-      workingDirectory: z.string(),
-      startOnInitialize: z.boolean().default(false),
+      start: z.string().optional(),
+      lint: z.string().optional(),
+      format: z.string().optional(),
+      install: z.string().optional(),
     }),
   })
   .passthrough();

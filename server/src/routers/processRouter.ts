@@ -39,7 +39,7 @@ class ProcessRouter {
     this.router.post(
       "/lint",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.lint({ captureErrors: false });
+        const result = await this.processService.lint({ captureErrors: true });
         res.json({ result });
       }),
     );
@@ -47,7 +47,7 @@ class ProcessRouter {
     this.router.post(
       "/format",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.format({ captureErrors: false });
+        const result = await this.processService.format({ captureErrors: true });
         res.json({ result });
       }),
     );
@@ -55,7 +55,7 @@ class ProcessRouter {
     this.router.post(
       "/install",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.install({ captureErrors: false });
+        const result = await this.processService.install({ captureErrors: true });
         res.json({ result });
       }),
     );

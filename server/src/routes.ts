@@ -1,6 +1,7 @@
 import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
+import HealthRouter from "./routers/healthRouter";
 import ProcessRouter from "./routers/processRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
@@ -22,10 +23,20 @@ export class AppRoutes {
   ) {}
 
   public async configureRoutes() {
-    await this.appRegistry.registerRouter("/api/process", (app) => {
-      const template = loadTemplate(this.config);
-      const processService = new ProcessService(template.commands, app.broadcaster);
+    await this.appRegistry.registerRouter("/api/health", () => {
+      const healthRouter = new HealthRouter();
+      return healthRouter.router;
+    });
+
+    await this.appRegistry.registerRouter("/api/process", async (app) => {
+      const template = loadTemplate(this.config.templatePath);
+      const processService = new ProcessService({
+        commandsTemplate: template.commands,
+        broadcaster: app.broadcaster,
+        workingDirectory: this.config.workingDirectory,
+      });
       const processRouter = new ProcessRouter(processService);
+      await processService.init(this.config.startProcessOnBoot);
       return processRouter.router;
     });
 
@@ -42,9 +53,17 @@ export class AppRoutes {
     });
 
     await this.appRegistry.registerRouter("/api/git", async () => {
-      const gitService = await createGitService(this.config.repoPath);
-      const gitRouter = new GitRouter(gitService);
-      return gitRouter.router;
+      try {
+        const gitService = await createGitService(this.config.repoPath);
+        const gitRouter = new GitRouter(gitService);
+        return gitRouter.router;
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Failed to create git service:", error.message);
+        }
+
+        throw error;
+      }
     });
 
     await this.appRegistry.registerRouter("/api/terminals", (app) => {
