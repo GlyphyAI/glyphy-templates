@@ -1,6 +1,12 @@
 type FlushCallback<T> = (items: T[]) => void;
 
-export class BufferedStream<T> {
+export interface IBufferedStream<T> {
+  flushCallback?: FlushCallback<T>;
+  add(item: T): void;
+  flush(): void;
+}
+
+export class BufferedStream<T> implements IBufferedStream<T> {
   private buffer: T[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private readonly cooldownPeriod: number;
