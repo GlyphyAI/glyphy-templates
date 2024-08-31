@@ -4,9 +4,9 @@ export class BufferedStream<T> {
   private buffer: T[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private readonly cooldownPeriod: number;
-  private readonly flushCallback: FlushCallback<T>;
+  public flushCallback?: FlushCallback<T>;
 
-  constructor(cooldownPeriod: number, flushCallback: FlushCallback<T>) {
+  constructor(cooldownPeriod: number, flushCallback?: FlushCallback<T>) {
     this.cooldownPeriod = cooldownPeriod;
     this.flushCallback = flushCallback;
   }
@@ -23,7 +23,7 @@ export class BufferedStream<T> {
   flush(): void {
     if (this.buffer.length === 0) return;
 
-    this.flushCallback(this.buffer);
+    this.flushCallback?.(this.buffer);
 
     this.buffer = [];
     this.flushTimer = null;
