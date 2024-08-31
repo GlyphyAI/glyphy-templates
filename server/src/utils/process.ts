@@ -67,15 +67,12 @@ export class Process {
     return this.process.pid!;
   }
 
-  async kill(signal?: NodeJS.Signals | number): Promise<void> {
+  async kill(signal: NodeJS.Signals | number = "SIGTERM"): Promise<void> {
     try {
-      if (this.process.killed) {
-        return;
-      }
-
+      this.process.stdin?.end();
       this.process.kill(signal);
     } catch (error) {
-      // ignoring the potential error from kill, it might be already killed
+      // ignoring the potential error from kill
     }
   }
 
