@@ -123,14 +123,14 @@ export interface ProcessOptions {
   onExit?: (code: number) => Promise<void> | void;
 }
 
-export interface ProcessManager {
+export interface IProcessController {
   start(cmd: string): Promise<Process>;
   start(options: ProcessOptions): Promise<Process>;
   startAndWait(cmd: string): Promise<ProcessOutput>;
   startAndWait(options: ProcessOptions): Promise<ProcessOutput>;
 }
 
-export class ProcessController implements ProcessManager {
+export class ProcessController implements IProcessController {
   async start(cmd: string): Promise<Process>;
 
   async start(options: ProcessOptions): Promise<Process>;
