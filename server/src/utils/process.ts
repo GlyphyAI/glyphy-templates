@@ -167,6 +167,7 @@ export class ProcessController implements IProcessController {
 
     spawnedProcess?.on("exit", (code) => {
       clearTimeout(timeoutHandle);
+      spawnedProcess.stdin?.end();
       processOutput?.finish(code ?? undefined);
       void options.onExit?.(code ?? 0);
       processDeferredOutput.resolve(processOutput);
