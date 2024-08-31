@@ -1,10 +1,11 @@
 import { z } from "zod";
+
 import { ProcessController } from "~/utils/process";
-import { BufferedStream } from "~/utils/stream";
+import { BufferedStream, type IBufferedStream } from "~/utils/stream";
 
 import type { CommandsTemplate } from "~/models/template";
 import type { IBroadcaster } from "~/utils/broadcaster";
-import type { Process } from "~/utils/process";
+import type { IProcessController, Process, ProcessOutput } from "~/utils/process";
 
 const flutterEventSchema = z.object({
   event: z.string(),
@@ -23,14 +24,14 @@ interface AppCommandServiceOptions {
   commandsTemplate: CommandsTemplate;
   broadcaster: IBroadcaster;
   workingDirectory: string;
-  processController: ProcessController;
-  bufferedTimeout: number;
+  processController: IProcessController;
+  stderrBufferedStream: IBufferedStream<string>;
 }
 
 export interface IAppCommandService {
   init(): Promise<void>;
-  startApp(): Promise<void>;
-  stopApp(): Promise<void>;
+  startApp(): Promise<ProcessOutput>;
+  stopApp(): Promise<ProcessOutput>;
   reloadApp(): Promise<void>;
   lint(options?: ExecuteCommandOptions): Promise<string>;
   format(options?: ExecuteCommandOptions): Promise<string>;
@@ -45,104 +46,111 @@ export class AppCommandService implements IAppCommandService {
   private readonly commandsTemplate: CommandsTemplate;
   private readonly broadcaster: IBroadcaster;
   private readonly workingDirectory: string;
-  private readonly processController: ProcessController;
-  private readonly stderrBufferedStream: BufferedStream<string>;
+  private readonly processController: IProcessController;
+  private readonly stderrBufferedStream: IBufferedStream<string>;
 
   constructor({
     commandsTemplate,
     broadcaster,
     workingDirectory,
     processController = new ProcessController(),
-    bufferedTimeout = 3000,
+    stderrBufferedStream = new BufferedStream(3000),
   }: AppCommandServiceOptions) {
     this.commandsTemplate = commandsTemplate;
     this.broadcaster = broadcaster;
     this.workingDirectory = workingDirectory;
     this.processController = processController;
-    this.stderrBufferedStream = new BufferedStream(bufferedTimeout, this.flushErrors.bind(this));
+    this.stderrBufferedStream = stderrBufferedStream;
+    this.stderrBufferedStream.flushCallback = this.flushErrors.bind(this);
   }
 
   async init(): Promise<void> {
-    if (this.commandsTemplate.install) {
-      await this.install();
-    }
-
-    if (this.commandsTemplate.start) {
-      await this.startApp();
-    }
+    await this.install();
+    await this.startApp();
   }
 
-  async startApp(): Promise<void> {
+  async startApp(): Promise<ProcessOutput> {
     if (this.appProcess) {
-      throw new Error("Another process is already running");
+      throw new Error("Another app is already running");
     }
 
     if (!this.commandsTemplate.start) {
       throw new Error("No start command provided");
     }
 
+    const stdoutHandler = (data: Buffer) => {
+      console.log("stdout:", data.toString());
+      const message = data.toString().trimEnd();
+      const flutterEvents = this.parseFlutterEvents(message);
+      if (!flutterEvents) {
+        this.broadcaster.broadcast({
+          event: "app:info",
+          params: { message },
+        });
+
+        return;
+      }
+
+      for (const event of flutterEvents) {
+        if (event.params && typeof event.params === "object" && "appId" in event.params) {
+          this.appId = event.params.appId as string;
+        }
+
+        this.broadcaster.broadcast({
+          event: "app:info",
+          params: {
+            event: event.event,
+            ...event.params,
+          },
+        });
+      }
+    };
+
+    const stderrHandler = (data: Buffer) => {
+      console.log("stderr:", data.toString());
+      this.stderrBufferedStream.add(data.toString());
+    };
+
+    const exitHandler = (code: number) => {
+      console.log(`Process exited with code ${code}`);
+      if (code !== 0) {
+        this.broadcaster.broadcast({
+          event: "app:exit",
+          params: { code, error: this.appProcess?.output.stderr },
+        });
+      } else {
+        this.broadcaster.broadcast({
+          event: "app:exit",
+          params: { code, error: null },
+        });
+      }
+
+      this.appProcess = null;
+      this.appId = null;
+    };
+
     this.appProcess = await this.processController.start({
       cmd: this.commandsTemplate.start,
       cwd: this.workingDirectory,
-      onStdout: (data) => {
-        const message = data.toString().trimEnd();
-        console.log("stdout:", message);
-
-        const flutterEvents = this.parseFlutterEvents(message);
-        if (!flutterEvents) {
-          this.broadcaster.broadcast({
-            event: "app:info",
-            params: { message },
-          });
-
-          return;
-        }
-
-        for (const event of flutterEvents) {
-          if (event.params && typeof event.params === "object" && "appId" in event.params) {
-            this.appId = event.params.appId as string;
-          }
-
-          this.broadcaster.broadcast({
-            event: "app:info",
-            params: {
-              event: event.event,
-              ...event.params,
-            },
-          });
-        }
-      },
-      onStderr: (data) => {
-        console.log("stderr:", data.toString());
-        this.stderrBufferedStream.add(data.toString());
-      },
-      onExit: (code) => {
-        console.log(`Process exited with code ${code}`);
-        if (code !== 0) {
-          this.broadcaster.broadcast({
-            event: "app:exit",
-            params: { code, error: this.appProcess?.output.stderr },
-          });
-        } else {
-          this.broadcaster.broadcast({
-            event: "app:exit",
-            params: { code, error: null },
-          });
-        }
-
-        this.appProcess = null;
-        this.appId = null;
-      },
+      onStdout: stdoutHandler,
+      onStderr: stderrHandler,
+      onExit: exitHandler,
     });
+
+    return this.appProcess.output;
   }
 
-  async stopApp(): Promise<void> {
+  async stopApp(): Promise<ProcessOutput> {
     if (!this.appProcess) {
-      throw new Error("No process is running");
+      throw new Error("No app is running");
     }
 
     await this.appProcess.kill();
+
+    const output = this.appProcess.output;
     this.appProcess = null;
+
+    return output;
   }
 
   async reloadApp(): Promise<void> {
@@ -163,8 +171,12 @@ export class AppCommandService implements IAppCommandService {
       },
     };
 
-    const message = JSON.stringify([grpcPayload]);
-    await this.appProcess.writeInput(message + "\n");
+    try {
+      const message = JSON.stringify([grpcPayload]);
+      await this.appProcess.writeInput(message + "\n");
+    } catch (error) {
+      throw error;
+    }
   }
 
   async lint(options?: ExecuteCommandOptions): Promise<string> {
