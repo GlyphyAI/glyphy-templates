@@ -29,6 +29,8 @@ export class AppRoutes {
   ) {}
 
   public async configureRoutes() {
+    const template = loadTemplate(this.config.templatePath);
+
     await this.appRegistry.registerRouter("/api/health", () => {
       const healthRouter = new HealthRouter();
       return healthRouter.router;
@@ -48,7 +50,7 @@ export class AppRoutes {
       const processController = new ProcessController();
       const stderrBufferedStream = new BufferedStream(3000);
       const appService = new AppService({
-        commandsTemplate: loadTemplate(this.config.templatePath).commands,
+        runCommand: template.previews.web?.command,
         workingDirectory: this.config.workingDirectory,
         processController: processController,
         broadcaster: app.broadcaster,
@@ -59,7 +61,6 @@ export class AppRoutes {
     });
 
     await this.appRegistry.registerRouter("/api/process", async (app) => {
-      const template = loadTemplate(this.config.templatePath);
       const processService = new ProcessService({
         commandsTemplate: template.commands,
         broadcaster: app.broadcaster,
