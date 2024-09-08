@@ -140,7 +140,7 @@ export class AppService implements IAppService {
           },
         });
       } catch (error) {
-        await this.stop(options);
+        await this.stop();
         throw error;
       }
     }
@@ -186,7 +186,7 @@ export class AppService implements IAppService {
           },
         });
       } catch (error) {
-        await this.stop(options);
+        await this.stop();
         throw error;
       }
     }
