@@ -145,7 +145,7 @@ export class AppCommandService implements IAppCommandService {
       throw new Error("No app is running");
     }
 
-    await this.appProcess.kill();
+    this.appProcess.kill();
 
     const output = this.appProcess.output;
     this.appProcess = null;
@@ -171,12 +171,8 @@ export class AppCommandService implements IAppCommandService {
       },
     };
 
-    try {
-      const message = JSON.stringify([grpcPayload]);
-      await this.appProcess.writeInput(message + "\n");
-    } catch (error) {
-      throw error;
-    }
+    const message = JSON.stringify([grpcPayload]);
+    this.appProcess.writeInput(message + "\n");
   }
 
   async lint(options?: ExecuteCommandOptions): Promise<string> {
