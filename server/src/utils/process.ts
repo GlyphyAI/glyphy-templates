@@ -1,6 +1,11 @@
 import { type ChildProcess, spawn } from "child_process";
 import { createDeferred } from "./promise";
 
+interface EventOptions<T> {
+  condition: (payload: T) => boolean;
+  timeout?: number;
+}
+
 type ProcessMessageType = "stdout" | "stderr" | "exit";
 
 class ProcessMessage {
@@ -67,15 +72,6 @@ export class Process {
     return this.process.pid!;
   }
 
-  async kill(signal: NodeJS.Signals | number = "SIGTERM"): Promise<void> {
-    try {
-      this.process.stdin?.end();
-      this.process.kill(signal);
-    } catch (error) {
-      // ignoring the potential error from kill
-    }
-  }
-
   async wait(timeout?: number): Promise<ProcessOutput> {
     let timeoutHandle: NodeJS.Timeout | undefined;
 
@@ -102,7 +98,48 @@ export class Process {
     }
   }
 
-  async writeInput(data: string): Promise<void> {
+  async waitForEvent<T = unknown>({ condition, timeout = 5000 }: EventOptions<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.process.stdout?.off("data", onEvent);
+        this.process.off("exit", onExit);
+        reject(new Error("Timeout waiting for event"));
+      }, timeout);
+
+      const onEvent = (payload: T) => {
+        if (!condition || condition(payload)) {
+          clearTimeout(timeoutId);
+          cleanupListeners();
+          resolve(payload);
+        }
+      };
+
+      const onExit = (code: number) => {
+        clearTimeout(timeoutId);
+        cleanupListeners();
+        reject(new Error(`Process exited with code ${code}`));
+      };
+
+      const cleanupListeners = () => {
+        this.process.stdout?.off("data", onEvent);
+        this.process.off("exit", onExit);
+      };
+
+      this.process.stdout?.on("data", onEvent);
+      this.process.on("exit", onExit);
+    });
+  }
+
+  kill(signal: NodeJS.Signals | number = "SIGTERM"): void {
+    try {
+      this.process.stdin?.end();
+      this.process.kill(signal);
+    } catch (error) {
+      // ignoring the potential error from kill
+    }
+  }
+
+  writeInput(data: string): void {
     if (this.process.stdin) {
       this.process.stdin.write(data);
     } else {
