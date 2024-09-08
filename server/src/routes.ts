@@ -1,3 +1,5 @@
+import AppRouter from "./routers/appRouter";
+import CommandRouter from "./routers/commandRouter";
 import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
@@ -6,12 +8,16 @@ import ProcessRouter from "./routers/processRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
 import { EventEmitter } from "node:events";
+import { AppService } from "./services/appService";
+import { CommandService } from "./services/commandService";
 import { DirectoryService } from "./services/directoryService";
 import { FileService } from "./services/fileService";
 import { createGitService } from "./services/gitServiceFactory";
 import { ProcessService } from "./services/processService";
 import { TerminalService } from "./services/terminalService";
 import { loadTemplate } from "./utils/loadTemplate";
+import { ProcessController } from "./utils/process";
+import { BufferedStream } from "./utils/stream";
 
 import type { App, IAppRegistry } from "./app";
 import type { Config } from "./config";
@@ -26,6 +32,30 @@ export class AppRoutes {
     await this.appRegistry.registerRouter("/api/health", () => {
       const healthRouter = new HealthRouter();
       return healthRouter.router;
+    });
+
+    await this.appRegistry.registerRouter("/api/execute", () => {
+      const processController = new ProcessController();
+      const commandService = new CommandService({
+        workingDirectory: this.config.workingDirectory,
+        processController: processController,
+      });
+      const commandRouter = new CommandRouter(commandService);
+      return commandRouter.router;
+    });
+
+    await this.appRegistry.registerRouter("/api/app", (app) => {
+      const processController = new ProcessController();
+      const stderrBufferedStream = new BufferedStream(3000);
+      const appService = new AppService({
+        commandsTemplate: loadTemplate(this.config.templatePath).commands,
+        workingDirectory: this.config.workingDirectory,
+        processController: processController,
+        broadcaster: app.broadcaster,
+        stderrBufferedStream: stderrBufferedStream,
+      });
+      const appRouter = new AppRouter(appService);
+      return appRouter.router;
     });
 
     await this.appRegistry.registerRouter("/api/process", async (app) => {
