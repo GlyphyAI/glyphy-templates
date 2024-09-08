@@ -19,8 +19,8 @@ const renameMoveSchema = z.object({
   newPath: z.string(),
 });
 
-class FileRouter {
-  public router: Router;
+export default class FileRouter {
+  public readonly router: Router;
 
   constructor(private fileService: IFileService) {
     this.router = Router();
@@ -101,5 +101,3 @@ class FileRouter {
     );
   }
 }
-
-export default FileRouter;

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { asyncHandler } from "~/utils/asyncHandler";
 
-class HealthRouter {
-  public router: Router;
+export default class HealthRouter {
+  public readonly router: Router;
 
   constructor() {
     this.router = Router();
@@ -18,5 +18,3 @@ class HealthRouter {
     );
   }
 }
-
-export default HealthRouter;

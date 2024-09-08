@@ -19,8 +19,8 @@ const sendSchema = z.object({
   command: z.string(),
 });
 
-class TerminalRouter {
-  public router: Router;
+export default class TerminalRouter {
+  public readonly router: Router;
 
   constructor(
     private terminalService: ITerminalService,
@@ -94,5 +94,3 @@ class TerminalRouter {
     );
   }
 }
-
-export default TerminalRouter;

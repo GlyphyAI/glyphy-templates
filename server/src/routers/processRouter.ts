@@ -3,8 +3,8 @@ import { asyncHandler } from "~/utils/asyncHandler";
 
 import type { IProcessService } from "~/services/processService";
 
-class ProcessRouter {
-  public router: Router;
+export default class ProcessRouter {
+  public readonly router: Router;
 
   constructor(private processService: IProcessService) {
     this.router = Router();
@@ -61,5 +61,3 @@ class ProcessRouter {
     );
   }
 }
-
-export default ProcessRouter;
