@@ -2,12 +2,11 @@ import { parseFlutterEvents } from "~/utils/parser";
 import { ProcessController } from "~/utils/process";
 import { BufferedStream, type IBufferedStream } from "~/utils/stream";
 
-import type { CommandsTemplate } from "~/models/template";
 import type { IBroadcaster } from "~/utils/broadcaster";
 import type { IProcessController, Process, ProcessOutput } from "~/utils/process";
 
 interface AppServiceOptions {
-  commandsTemplate: CommandsTemplate;
+  runCommand: string | undefined;
   broadcaster: IBroadcaster;
   workingDirectory: string;
   processController: IProcessController;
@@ -31,20 +30,20 @@ export class AppService implements IAppService {
   private appId: string | null = null;
   private requestId = 1;
 
-  private readonly commandsTemplate: CommandsTemplate;
+  private readonly runCommand: string | undefined;
   private readonly broadcaster: IBroadcaster;
   private readonly workingDirectory: string;
   private readonly processController: IProcessController;
   private readonly stderrBufferedStream: IBufferedStream<string>;
 
   constructor({
-    commandsTemplate,
+    runCommand,
     broadcaster,
     workingDirectory,
     processController = new ProcessController(),
     stderrBufferedStream = new BufferedStream(3000),
   }: AppServiceOptions) {
-    this.commandsTemplate = commandsTemplate;
+    this.runCommand = runCommand;
     this.broadcaster = broadcaster;
     this.workingDirectory = workingDirectory;
     this.processController = processController;
@@ -63,8 +62,8 @@ export class AppService implements IAppService {
       throw new Error("Another app is already running");
     }
 
-    if (!this.commandsTemplate.start) {
-      throw new Error("No start command provided");
+    if (!this.runCommand) {
+      throw new Error("No run command provided");
     }
 
     const stdoutHandler = (data: Buffer) => {
@@ -119,7 +118,7 @@ export class AppService implements IAppService {
     };
 
     this.appProcess = await this.processController.start({
-      cmd: this.commandsTemplate.start,
+      cmd: this.runCommand,
       cwd: this.workingDirectory,
       onStdout: stdoutHandler,
       onStderr: stderrHandler,
