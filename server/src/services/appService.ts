@@ -19,7 +19,7 @@ interface WaitOptions {
 }
 
 export interface IAppService {
-  init(): Promise<void>;
+  init(): Promise<ProcessOutput>;
   start(options?: WaitOptions): Promise<ProcessOutput>;
   reload(options?: WaitOptions): Promise<ProcessOutput>;
   stop(options?: WaitOptions): Promise<ProcessOutput>;
@@ -51,10 +51,12 @@ export class AppService implements IAppService {
     this.stderrBufferedStream.flushCallback = this.flushErrors.bind(this);
   }
 
-  async init(): Promise<void> {
+  async init(): Promise<ProcessOutput> {
     if (!this.appProcess) {
-      await this.start();
+      return await this.start();
     }
+
+    return this.appProcess.output;
   }
 
   async start(options?: WaitOptions): Promise<ProcessOutput> {
