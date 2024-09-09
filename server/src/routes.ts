@@ -4,7 +4,6 @@ import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
 import HealthRouter from "./routers/healthRouter";
-import ProcessRouter from "./routers/processRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
 import { EventEmitter } from "node:events";
@@ -13,7 +12,6 @@ import { CommandService } from "./services/commandService";
 import { DirectoryService } from "./services/directoryService";
 import { FileService } from "./services/fileService";
 import { createGitService } from "./services/gitServiceFactory";
-import { ProcessService } from "./services/processService";
 import { TerminalService } from "./services/terminalService";
 import { loadTemplate } from "./utils/loadTemplate";
 import { ProcessController } from "./utils/process";
@@ -58,17 +56,6 @@ export class AppRoutes {
       });
       const appRouter = new AppRouter(appService);
       return appRouter.router;
-    });
-
-    await this.appRegistry.registerRouter("/api/process", async (app) => {
-      const processService = new ProcessService({
-        commandsTemplate: template.commands,
-        broadcaster: app.broadcaster,
-        workingDirectory: this.config.workingDirectory,
-      });
-      const processRouter = new ProcessRouter(processService);
-      await processService.init(this.config.startProcessOnBoot);
-      return processRouter.router;
     });
 
     await this.appRegistry.registerRouter("/api/files", () => {
