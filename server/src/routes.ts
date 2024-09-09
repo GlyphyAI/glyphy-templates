@@ -44,7 +44,7 @@ export class AppRoutes {
       return commandRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/app", (app) => {
+    await this.appRegistry.registerRouter("/api/app", async (app) => {
       const processController = new ProcessController();
       const stderrBufferedStream = new BufferedStream(3000);
       const appService = new AppService({
@@ -54,6 +54,11 @@ export class AppRoutes {
         broadcaster: app.broadcaster,
         stderrBufferedStream: stderrBufferedStream,
       });
+
+      if (this.config.initAppOnBoot) {
+        await appService.init();
+      }
+
       const appRouter = new AppRouter(appService);
       return appRouter.router;
     });
