@@ -10,6 +10,7 @@ import type { IFileService } from "~/services/fileService";
 
 const mockFileService: jest.Mocked<IFileService> = {
   listFiles: jest.fn().mockResolvedValue(["file1.txt", "file2.txt"]),
+  readFile: jest.fn().mockResolvedValue("Hello, World!"),
   createFile: jest.fn().mockResolvedValue(undefined),
   updateFile: jest.fn().mockResolvedValue(undefined),
   renameFile: jest.fn().mockResolvedValue(undefined),
@@ -41,6 +42,15 @@ describe("FileRouter", () => {
     const parsedResponse = filesResponseSchema.parse(response.body);
     expect(parsedResponse).toEqual(["file1.txt", "file2.txt"]);
     expect(mockFileService.listFiles).toHaveBeenCalledWith(".", { recursive: true });
+  });
+
+  test("GET /read should read a file", async () => {
+    const response = await request(app).get("/api/file/read").query({ filePath: "file1.txt" });
+    expect(response.status).toBe(200);
+
+    const parsedResponse = z.object({ content: z.string() }).parse(response.body);
+    expect(parsedResponse.content).toBe("Hello, World!");
+    expect(mockFileService.readFile).toHaveBeenCalledWith("file1.txt");
   });
 
   test("POST /create should create a file", async () => {

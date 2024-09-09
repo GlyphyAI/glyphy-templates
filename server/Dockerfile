@@ -7,7 +7,7 @@ COPY package*.json ./
 RUN npm install
 
 RUN apt-get update && \
-    apt-get install -y openssh-client git && \
+    apt-get install -y openssh-client openssh-server git && \
     rm -rf /var/lib/apt/lists/*
 
 # Authorize SSH Host by adding GitHub's SSH key fingerprint
@@ -18,6 +18,7 @@ RUN mkdir -p /root/.ssh && \
 COPY . .
 
 COPY entrypoint.sh /entrypoint.sh
+
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 3000

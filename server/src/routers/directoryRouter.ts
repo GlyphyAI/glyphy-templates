@@ -18,8 +18,8 @@ const directoryPathSchema = z.object({
   directoryPath: z.string(),
 });
 
-class DirectoryRouter {
-  public router: Router;
+export default class DirectoryRouter {
+  public readonly router: Router;
 
   constructor(private directoryService: IDirectoryService) {
     this.router = Router();
@@ -41,6 +41,7 @@ class DirectoryRouter {
           excludePatterns: ignore,
           recursive,
         });
+
         res.json(directories);
       }),
     );
@@ -82,5 +83,3 @@ class DirectoryRouter {
     );
   }
 }
-
-export default DirectoryRouter;

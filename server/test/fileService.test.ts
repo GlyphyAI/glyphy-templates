@@ -27,6 +27,11 @@ describe("FileService", () => {
     expect(files).toContain("/test/file2.txt");
   });
 
+  test("readFile should read the file content", async () => {
+    const content = await fileService.readFile("/test/file1.txt");
+    expect(content).toBe("Hello, World!");
+  });
+
   test("createFile should create a file with content", async () => {
     await fileService.createFile("/test/newfile.txt", "New file content");
     const content = await fs.promises.readFile("/test/newfile.txt", "utf-8");

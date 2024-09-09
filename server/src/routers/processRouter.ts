@@ -3,8 +3,8 @@ import { asyncHandler } from "~/utils/asyncHandler";
 
 import type { IProcessService } from "~/services/processService";
 
-class ProcessRouter {
-  public router: Router;
+export default class ProcessRouter {
+  public readonly router: Router;
 
   constructor(private processService: IProcessService) {
     this.router = Router();
@@ -39,7 +39,7 @@ class ProcessRouter {
     this.router.post(
       "/lint",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.lint({ captureErrors: false });
+        const result = await this.processService.lint({ captureErrors: true });
         res.json({ result });
       }),
     );
@@ -47,7 +47,7 @@ class ProcessRouter {
     this.router.post(
       "/format",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.format({ captureErrors: false });
+        const result = await this.processService.format({ captureErrors: true });
         res.json({ result });
       }),
     );
@@ -55,11 +55,9 @@ class ProcessRouter {
     this.router.post(
       "/install",
       asyncHandler(async (_req, res) => {
-        const result = await this.processService.install({ captureErrors: false });
+        const result = await this.processService.install({ captureErrors: true });
         res.json({ result });
       }),
     );
   }
 }
-
-export default ProcessRouter;

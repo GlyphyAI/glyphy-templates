@@ -19,8 +19,8 @@ const sendSchema = z.object({
   command: z.string(),
 });
 
-class TerminalRouter {
-  public router: Router;
+export default class TerminalRouter {
+  public readonly router: Router;
 
   constructor(
     private terminalService: ITerminalService,
@@ -57,14 +57,17 @@ class TerminalRouter {
 
         // Broadcast terminal output (includes terminal ANSI symbols )
         this.terminalService.onTerminalOutput(id, (output) => {
-          this.broadcaster.broadcast({ type: `terminal-${id}`, data: output });
+          this.broadcaster.broadcast({
+            event: "terminal:stdout",
+            params: { terminalId: id, data: output },
+          });
         });
 
         // Broadcast terminal close (includes exit)
         this.terminalService.onTerminalClose(id, (exitCode) => {
           this.broadcaster.broadcast({
-            type: `terminal-${id}`,
-            data: `Terminal closed with code ${exitCode}`,
+            event: "terminal:exit",
+            params: { terminalId: id, code: exitCode },
           });
         });
 
@@ -91,5 +94,3 @@ class TerminalRouter {
     );
   }
 }
-
-export default TerminalRouter;

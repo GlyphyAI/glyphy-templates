@@ -32,8 +32,8 @@ const tagSchema = z.object({
   message: z.string(),
 });
 
-class GitRouter {
-  public router: Router;
+export default class GitRouter {
+  public readonly router: Router;
 
   constructor(private gitService: IGitService) {
     this.router = Router();
@@ -140,5 +140,3 @@ class GitRouter {
     );
   }
 }
-
-export default GitRouter;

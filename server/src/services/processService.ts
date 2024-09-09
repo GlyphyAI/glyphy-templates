@@ -1,98 +1,163 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
-import { unwrapErrorMessage } from "~/utils/zodErrors";
-
+import { spawn, type ChildProcess } from "child_process";
+import { z } from "zod";
 import type { CommandsTemplate } from "~/models/template";
 import type { IBroadcaster } from "~/utils/broadcaster";
-import type { Promisable } from "~/utils/types";
 
-function splitCommand(command: string): [string, string[]] {
-  const [cmd, ...args] = command.split(" ");
-  if (!cmd) {
-    throw new Error(`Invalid command: ${command}`);
+const flutterEventSchema = z.object({
+  event: z.string(),
+  params: z.record(z.unknown()),
+});
+
+const flutterEventArraySchema = z.array(flutterEventSchema);
+
+function extractAppId(stdoutData: string): string | null {
+  try {
+    const flutterEventArray = flutterEventArraySchema.parse(JSON.parse(stdoutData));
+    for (const event of flutterEventArray) {
+      if (event.params && typeof event.params === "object" && "appId" in event.params) {
+        return event.params.appId as string;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return null;
   }
-
-  return [cmd, args];
 }
 
-interface RunOptions {
-  captureErrors: boolean;
+interface ExecuteCommandOptions {
+  captureErrors?: boolean;
+}
+
+interface ProcessServiceOptions {
+  commandsTemplate: CommandsTemplate;
+  broadcaster: IBroadcaster;
+  workingDirectory: string;
 }
 
 export interface IProcessService {
-  startProcess(): Promisable<void>;
-  stopProcess(): Promisable<void>;
-  reloadProcess(): Promisable<void>;
-  lint(options: RunOptions): Promisable<string>;
-  format(options: RunOptions): Promisable<string>;
-  install(options: RunOptions): Promisable<string>;
+  startProcess(): Promise<void>;
+  stopProcess(): Promise<void>;
+  reloadProcess(): Promise<void>;
+  lint(options?: ExecuteCommandOptions): Promise<string>;
+  format(options?: ExecuteCommandOptions): Promise<string>;
+  install(options?: ExecuteCommandOptions): Promise<string>;
 }
 
 export class ProcessService implements IProcessService {
-  private process: ChildProcessWithoutNullStreams | null = null;
+  private process: ChildProcess | null = null;
+  private appId: string | null = null;
+  private requestId = 1;
 
-  constructor(
-    private template: CommandsTemplate,
-    private broadcaster: IBroadcaster,
-  ) {}
+  private errorTimer: NodeJS.Timeout | null = null;
+  private errorStream: string[] = [];
+  private readonly cooldownPeriod = 3000;
 
-  startProcess() {
+  private readonly commandsTemplate: CommandsTemplate;
+  private readonly broadcaster: IBroadcaster;
+  private readonly workingDirectory: string;
+
+  constructor({ commandsTemplate, broadcaster, workingDirectory }: ProcessServiceOptions) {
+    this.commandsTemplate = commandsTemplate;
+    this.broadcaster = broadcaster;
+    this.workingDirectory = workingDirectory;
+  }
+
+  async init(startProcessOnBoot = true): Promise<void> {
+    if (startProcessOnBoot) {
+      await this.install();
+      await this.startProcess();
+    }
+  }
+
+  async startProcess(): Promise<void> {
     if (this.process) {
       throw new Error("Another process is already running");
     }
 
-    if (!this.template.startCommand) {
+    if (!this.commandsTemplate.start) {
       throw new Error("Start command not defined");
     }
 
-    const [command, args] = splitCommand(this.template.startCommand);
-    const process = spawn(command, args, { cwd: this.template.workingDirectory });
-
-    process.stdout.on("data", (data: Buffer) => {
-      console.log(`stdout: ${data.toString()}`);
-      this.broadcaster?.broadcast({ type: "stdout", data: data.toString() });
+    const [command, ...args] = this.splitCommand(this.commandsTemplate.start);
+    this.process = spawn(command, args, {
+      cwd: this.workingDirectory,
+      shell: true,
     });
 
-    process.stderr.on("data", (data: Buffer) => {
-      console.error(`stderr: ${data.toString()}`);
-      this.broadcaster?.broadcast({ type: "stderr", data: data.toString() });
-    });
-
-    process.on("close", (code) => {
-      console.log(`process exited with code ${code}`);
-      this.process = null;
-      this.broadcaster?.broadcast({ type: "close", data: `${code}` });
-    });
-
-    process.on("error", (err) => {
-      console.error(`Failed to start process: ${err.message}`);
-      this.process = null;
-      this.broadcaster?.broadcast({ type: "error", data: err.message });
-    });
-
-    this.process = process;
+    this.setupProcessListeners(this.process);
   }
 
-  stopProcess() {
+  async stopProcess(): Promise<void> {
+    if (!this.process) {
+      throw new Error("No process is running");
+    }
+
+    this.process.kill();
+    this.process = null;
+  }
+
+  async reloadProcess(): Promise<void> {
+    const requestId = this.requestId++;
+    const payload = {
+      id: requestId,
+      method: "app.restart",
+      params: {
+        appId: this.appId,
+        fullRestart: true,
+        pause: false,
+        reason: "manual",
+      },
+    };
+
     if (this.process) {
-      this.process.kill();
-      this.process = null;
+      const message = JSON.stringify([payload]);
+      this.process.stdin?.write(message + "\n");
+    } else {
+      await this.startProcess();
     }
   }
 
-  reloadProcess() {
-    this.sendProcess("R\n");
+  async lint({ captureErrors = true }: ExecuteCommandOptions = {}): Promise<string> {
+    return this.executeTemplateCommand("lint", { captureErrors });
   }
 
-  private sendProcess(data: string) {
-    if (this.process) {
-      this.process.stdin.write(data);
+  async format({ captureErrors = false }: ExecuteCommandOptions = {}): Promise<string> {
+    return this.executeTemplateCommand("format", { captureErrors });
+  }
+
+  async install({ captureErrors = false }: ExecuteCommandOptions = {}): Promise<string> {
+    return this.executeTemplateCommand("install", { captureErrors });
+  }
+
+  private splitCommand(command: string): [string, ...string[]] {
+    const [cmd, ...args] = command.split(" ");
+    if (!cmd) {
+      throw new Error(`Invalid command: ${command}`);
     }
+
+    return [cmd, ...args];
   }
 
-  private async runCommand(command: string, cwd: string, captureErrors = false): Promise<string> {
+  private async executeTemplateCommand(
+    commandKey: keyof CommandsTemplate,
+    { captureErrors }: ExecuteCommandOptions,
+  ): Promise<string> {
+    const command = this.commandsTemplate[commandKey];
+    if (!command) {
+      throw new Error(`${commandKey} not defined`);
+    }
+
+    return await this.executeCommand(command, { captureErrors });
+  }
+
+  private async executeCommand(
+    command: string,
+    { captureErrors = false }: ExecuteCommandOptions,
+  ): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const [cmd, args] = splitCommand(command);
-      const process = spawn(cmd, args, { cwd });
+      const [cmd, ...args] = this.splitCommand(command);
+      const process = spawn(cmd, args, { cwd: this.workingDirectory });
       let result = "";
 
       process.stdout.on("data", (data: Buffer) => {
@@ -101,7 +166,6 @@ export class ProcessService implements IProcessService {
 
       process.stderr.on("data", (data: Buffer) => {
         const errorOutput = data.toString();
-        console.error(`stderr: ${errorOutput}`);
         if (captureErrors) {
           result += errorOutput;
         } else {
@@ -118,72 +182,87 @@ export class ProcessService implements IProcessService {
       });
 
       process.on("error", (err: Error) => {
-        console.error(`Failed to execute command: ${err.message}`);
         reject(err.message);
       });
     });
   }
 
-  async lint(options = { captureErrors: true }): Promise<string> {
-    if (!this.template.lintCommand) {
-      throw new Error("Lint command not defined");
-    }
+  private setupProcessListeners(process: ChildProcess): void {
+    process.stdout?.on("data", (data: Buffer) => {
+      const message = data.toString().trimEnd();
 
-    try {
-      const result = await this.runCommand(
-        this.template.lintCommand,
-        this.template.workingDirectory,
-        options.captureErrors,
-      );
+      try {
+        const events = flutterEventArraySchema.parse(JSON.parse(message));
+        for (const event of events) {
+          this.broadcaster.broadcast({
+            event: "app:info",
+            params: {
+              event: event.event,
+              ...event.params,
+            },
+          });
+        }
+      } catch (error) {
+        this.broadcaster.broadcast({
+          event: "app:info", //
+          params: { message },
+        });
+      }
 
-      this.broadcaster?.broadcast({ type: "lint", data: result });
-      return result;
-    } catch (error) {
-      const errorMessage = unwrapErrorMessage(error);
-      this.broadcaster?.broadcast({ type: "lint_error", data: errorMessage });
-      throw error;
-    }
-  }
+      console.log("stdout:", message);
+      const appId = extractAppId(message);
+      if (appId) {
+        this.appId = appId;
+      }
+    });
 
-  async format(options = { captureErrors: false }): Promise<string> {
-    if (!this.template.formatCommand) {
-      throw new Error("Format command not defined");
-    }
+    process.stderr?.on("data", (data: Buffer) => {
+      const errorMessage = data.toString().trimEnd();
+      this.errorStream.push(errorMessage);
 
-    try {
-      const result = await this.runCommand(
-        this.template.formatCommand,
-        this.template.workingDirectory,
-        options.captureErrors,
-      );
+      if (this.errorTimer) {
+        clearTimeout(this.errorTimer);
+      }
 
-      this.broadcaster?.broadcast({ type: "format", data: result });
-      return result;
-    } catch (error) {
-      const errorMessage = unwrapErrorMessage(error);
-      this.broadcaster?.broadcast({ type: "format_error", data: errorMessage });
-      throw error;
-    }
-  }
+      this.errorTimer = setTimeout(() => {
+        if (this.errorStream.length > 0) {
+          console.log("stderr:\n", this.errorStream);
+          this.broadcaster.broadcast({
+            event: "app:error",
+            params: { errors: this.errorStream.join("\n") },
+          });
 
-  async install(options = { captureErrors: false }): Promise<string> {
-    if (!this.template.buildDependenciesCommand) {
-      throw new Error("Build dependencies command not defined");
-    }
+          this.errorStream = [];
+        }
+      }, this.cooldownPeriod);
+    });
 
-    try {
-      const result = await this.runCommand(
-        this.template.buildDependenciesCommand,
-        this.template.workingDirectory,
-        options.captureErrors,
-      );
+    process.on("close", (code) => {
+      this.process = null;
+      this.appId = null;
+      console.log(`Process exited with code ${code}`);
 
-      this.broadcaster?.broadcast({ type: "build_dependencies", data: result });
-      return result;
-    } catch (error) {
-      const errorMessage = unwrapErrorMessage(error);
-      this.broadcaster?.broadcast({ type: "build_dependencies_error", data: errorMessage });
-      throw error;
-    }
+      if (code !== 0) {
+        this.broadcaster.broadcast({
+          event: "app:exit",
+          params: { code, error: this.errorStream.join("\n") },
+        });
+
+        this.errorStream = [];
+      } else {
+        this.broadcaster.broadcast({
+          event: "app:exit",
+          params: { code, error: null },
+        });
+      }
+    });
+
+    process.on("error", (err) => {
+      console.log("error:", JSON.stringify(err, null, 2));
+      this.broadcaster.broadcast({
+        event: "app:error",
+        params: { message: err.message },
+      });
+    });
   }
 }

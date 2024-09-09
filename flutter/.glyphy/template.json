@@ -2,11 +2,10 @@
   "name": "Flutter",
   "description": "Kickstart your app development with this Flutter template!",
   "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/flutter/.glyphy/icon.png",
-  "commands": {
-    "startCommand": "flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0",
-    "lintCommand": "dart analyze --format=json",
-    "formatCommand": "dart format .",
-    "buildDependenciesCommand": "flutter pub get",
-    "workingDirectory": "/workspace"
+  "previews": {
+    "enabled": true,
+    "web": {
+      "command": "flutter run --machine -d web-server --web-port=8080 --web-hostname=0.0.0.0"
+    }
   }
 }

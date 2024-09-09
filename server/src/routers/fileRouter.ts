@@ -19,8 +19,8 @@ const renameMoveSchema = z.object({
   newPath: z.string(),
 });
 
-class FileRouter {
-  public router: Router;
+export default class FileRouter {
+  public readonly router: Router;
 
   constructor(private fileService: IFileService) {
     this.router = Router();
@@ -43,6 +43,15 @@ class FileRouter {
           recursive,
         });
         res.json(files);
+      }),
+    );
+
+    this.router.get(
+      "/read",
+      asyncHandler(async (req, res) => {
+        const { filePath } = fileSchema.parse(req.query);
+        const content = await this.fileService.readFile(filePath);
+        res.json({ content });
       }),
     );
 
@@ -92,5 +101,3 @@ class FileRouter {
     );
   }
 }
-
-export default FileRouter;
