@@ -4,7 +4,6 @@ import DirectoryRouter from "./routers/directoryRouter";
 import FileRouter from "./routers/fileRouter";
 import GitRouter from "./routers/gitRouter";
 import HealthRouter from "./routers/healthRouter";
-import ProcessRouter from "./routers/processRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
 import { EventEmitter } from "node:events";
@@ -13,7 +12,6 @@ import { CommandService } from "./services/commandService";
 import { DirectoryService } from "./services/directoryService";
 import { FileService } from "./services/fileService";
 import { createGitService } from "./services/gitServiceFactory";
-import { ProcessService } from "./services/processService";
 import { TerminalService } from "./services/terminalService";
 import { loadTemplate } from "./utils/loadTemplate";
 import { ProcessController } from "./utils/process";
@@ -29,7 +27,7 @@ export class AppRoutes {
   ) {}
 
   public async configureRoutes() {
-    const template = loadTemplate(this.config.templatePath);
+    const template = loadTemplate(this.config.workingDirectory, this.config.templatePath);
 
     await this.appRegistry.registerRouter("/api/health", () => {
       const healthRouter = new HealthRouter();
@@ -46,7 +44,7 @@ export class AppRoutes {
       return commandRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/app", (app) => {
+    await this.appRegistry.registerRouter("/api/app", async (app) => {
       const processController = new ProcessController();
       const stderrBufferedStream = new BufferedStream(3000);
       const appService = new AppService({
@@ -56,19 +54,13 @@ export class AppRoutes {
         broadcaster: app.broadcaster,
         stderrBufferedStream: stderrBufferedStream,
       });
+
+      if (this.config.initAppOnBoot) {
+        await appService.init();
+      }
+
       const appRouter = new AppRouter(appService);
       return appRouter.router;
-    });
-
-    await this.appRegistry.registerRouter("/api/process", async (app) => {
-      const processService = new ProcessService({
-        commandsTemplate: template.commands,
-        broadcaster: app.broadcaster,
-        workingDirectory: this.config.workingDirectory,
-      });
-      const processRouter = new ProcessRouter(processService);
-      await processService.init(this.config.startProcessOnBoot);
-      return processRouter.router;
     });
 
     await this.appRegistry.registerRouter("/api/files", () => {
@@ -85,7 +77,7 @@ export class AppRoutes {
 
     await this.appRegistry.registerRouter("/api/git", async () => {
       try {
-        const gitService = await createGitService(this.config.repoPath);
+        const gitService = await createGitService(this.config.workingDirectory);
         const gitRouter = new GitRouter(gitService);
         return gitRouter.router;
       } catch (error) {
