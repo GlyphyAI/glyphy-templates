@@ -1,4 +1,4 @@
-FROM ghcr.io/glyphyai/template-base:latest
+FROM ghcr.io/glyphyai/sandbox-server:latest
 
 RUN groupadd -r appuser && useradd -r -g appuser -s /bin/bash appuser
 
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /workspace/app /home/appuser /server \
-    && chown -R appuser:appuser /workspace /home/appuser /server
+RUN mkdir -p /workspace/app /home/appuser /sandbox-server \
+    && chown -R appuser:appuser /workspace /home/appuser /sandbox-server
 
 ENV FLUTTER_ROOT="/opt/flutter"
 ENV PATH="${FLUTTER_ROOT}/bin:${PATH}"
