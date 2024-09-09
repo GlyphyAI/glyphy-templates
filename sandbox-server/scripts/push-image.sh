@@ -12,9 +12,9 @@ if [ -z "$GITHUB_PAT" ]; then
     exit 1
 fi
 
-LOCAL_IMAGE_NAME="template-base"
+LOCAL_IMAGE_NAME="sandbox-server"
 OWNER="glyphyai"
-IMAGE_NAME="template-base"
+IMAGE_NAME="sandbox-server"
 TAG="latest"
 
 # Login to GitHub Container Registry

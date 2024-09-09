@@ -56,7 +56,7 @@ export class AppRoutes {
       });
 
       if (this.config.initAppOnBoot) {
-        await appService.init();
+        await appService.init({ wait: true, timeout: 60000 });
       }
 
       const appRouter = new AppRouter(appService);

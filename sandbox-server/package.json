@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "sandbox-server",
   "version": "1.0.0",
   "description": "",
   "module": "src/index.js",

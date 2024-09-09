@@ -51,9 +51,9 @@ export class AppService implements IAppService {
     this.stderrBufferedStream.flushCallback = this.flushErrors.bind(this);
   }
 
-  async init(): Promise<ProcessOutput> {
+  async init(options?: WaitOptions): Promise<ProcessOutput> {
     if (!this.appProcess) {
-      return await this.start();
+      return await this.start(options);
     }
 
     return this.appProcess.output;
