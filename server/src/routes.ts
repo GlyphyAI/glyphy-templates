@@ -27,7 +27,7 @@ export class AppRoutes {
   ) {}
 
   public async configureRoutes() {
-    const template = loadTemplate(this.config.templatePath);
+    const template = loadTemplate(this.config.workingDirectory, this.config.templatePath);
 
     await this.appRegistry.registerRouter("/api/health", () => {
       const healthRouter = new HealthRouter();
@@ -77,7 +77,7 @@ export class AppRoutes {
 
     await this.appRegistry.registerRouter("/api/git", async () => {
       try {
-        const gitService = await createGitService(this.config.repoPath);
+        const gitService = await createGitService(this.config.workingDirectory);
         const gitRouter = new GitRouter(gitService);
         return gitRouter.router;
       } catch (error) {
