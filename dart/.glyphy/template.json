@@ -2,10 +2,7 @@
   "name": "Dart",
   "description": "Kickstart your app development with this Dart CLI template!",
   "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/dart/.glyphy/icon.png",
-  "commands": {
-    "start": "dart run bin/main.dart",
-    "lint": "dart analyze --format=json",
-    "format": "dart format .",
-    "install": "dart pub get"
+  "previews": {
+    "enabled": false
   }
 }
