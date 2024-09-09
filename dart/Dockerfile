@@ -2,7 +2,7 @@
 FROM dart:stable AS dart_base
 
 # # ALL custom templates must use GlyphyAI's template-base image
-FROM ghcr.io/glyphyai/template-base:latest
+FROM ghcr.io/glyphyai/sandbox-server:latest
 
 # Copy Dart SDK from dart_base
 COPY --from=dart_base /usr/lib/dart /usr/lib/dart
