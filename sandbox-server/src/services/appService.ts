@@ -164,7 +164,7 @@ export class AppService implements IAppService {
   }
 
   async reload(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess) {
+    if (!this.appProcess?.running) {
       return await this.start();
     }
 
@@ -216,7 +216,7 @@ export class AppService implements IAppService {
   }
 
   async stop(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess) {
+    if (!this.appProcess?.running) {
       throw new Error("No app is running");
     }
 
