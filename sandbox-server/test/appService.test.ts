@@ -5,7 +5,7 @@ import { parseFlutterEvents } from "~/utils/parser";
 import { BufferedStream, type IBufferedStream } from "~/utils/stream";
 
 import type { IBroadcaster } from "~/utils/broadcaster";
-import type { IProcessController, Process } from "~/utils/process";
+import type { IProcessController, Process, WaitForEventResult, WaitResult } from "~/utils/process";
 
 jest.mock("~/utils/parser", () => ({
   parseFlutterEvents: jest.fn(),
@@ -36,6 +36,7 @@ describe("AppService", () => {
       kill: jest.fn(),
       wait: jest.fn(),
       waitForEvent: jest.fn(),
+      running: false,
     } as unknown as Process;
 
     (processController.start as jest.Mock).mockResolvedValue(mockProcess);
@@ -78,6 +79,7 @@ describe("AppService", () => {
     });
 
     test("should throw an error if an app is already running", async () => {
+      (mockProcess as unknown as { running: boolean }).running = true;
       await appService.start();
       await expect(appService.start()).rejects.toThrow("Another app is already running");
     });
@@ -94,14 +96,32 @@ describe("AppService", () => {
     });
 
     test("should wait for app.started event if wait option is true", async () => {
-      (parseFlutterEvents as jest.Mock).mockReturnValue([{ event: "app.started" }]);
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue({ eventReceived: true });
       await appService.start({ wait: true });
       expect(mockProcess.waitForEvent).toHaveBeenCalled();
     });
 
-    test("should stop the app if wait times out", async () => {
-      (mockProcess.waitForEvent as jest.Mock).mockRejectedValue(new Error("Timeout"));
-      await expect(appService.start({ wait: true, timeout: 1000 })).rejects.toThrow("Timeout");
+    test("should throw an error on timeout when waiting for app to start", async () => {
+      const timeoutResult: WaitForEventResult<unknown> = {
+        eventReceived: false,
+        timeout: true,
+      };
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue(timeoutResult);
+
+      await expect(appService.start({ wait: true, timeout: 1000 })).rejects.toThrow(
+        "Timeout waiting for app to start after 1000ms",
+      );
+      expect(mockProcess.kill).toHaveBeenCalled();
+    });
+
+    test("should throw an error on process exit when waiting for app to start", async () => {
+      const exitResult: WaitForEventResult<unknown> = {
+        eventReceived: false,
+        exitCode: 1,
+      };
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue(exitResult);
+
+      await expect(appService.start({ wait: true })).rejects.toThrow("Process exited with code 1");
       expect(mockProcess.kill).toHaveBeenCalled();
     });
 
@@ -127,8 +147,7 @@ describe("AppService", () => {
 
       type StartCall = [{ onStdout: (data: Buffer) => void }];
       const startCall = (processController.start as jest.Mock).mock.calls[0] as StartCall;
-      const options = startCall[0];
-      const stdoutHandler = options.onStdout;
+      const stdoutHandler = startCall[0].onStdout;
 
       stdoutHandler(Buffer.from("App started"));
 
@@ -153,17 +172,34 @@ describe("AppService", () => {
 
     test("should wait for app.progress event if wait option is true", async () => {
       await appService.start();
-      (parseFlutterEvents as jest.Mock).mockReturnValue([
-        { event: "app.progress", params: { finished: true } },
-      ]);
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue({ eventReceived: true });
       await appService.reload({ wait: true });
       expect(mockProcess.waitForEvent).toHaveBeenCalled();
     });
 
-    test("should stop the app if wait times out during reload", async () => {
+    test("should throw an error on timeout when waiting for app to reload", async () => {
       await appService.start();
-      (mockProcess.waitForEvent as jest.Mock).mockRejectedValue(new Error("Timeout"));
-      await expect(appService.reload({ wait: true, timeout: 1000 })).rejects.toThrow("Timeout");
+      const timeoutResult: WaitForEventResult<unknown> = {
+        eventReceived: false,
+        timeout: true,
+      };
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue(timeoutResult);
+
+      await expect(appService.reload({ wait: true, timeout: 1000 })).rejects.toThrow(
+        "Timeout waiting for app to reload after 1000ms",
+      );
+      expect(mockProcess.kill).toHaveBeenCalled();
+    });
+
+    test("should throw an error on process exit when waiting for app to reload", async () => {
+      await appService.start();
+      const exitResult: WaitForEventResult<unknown> = {
+        eventReceived: false,
+        exitCode: 1,
+      };
+      (mockProcess.waitForEvent as jest.Mock).mockResolvedValue(exitResult);
+
+      await expect(appService.reload({ wait: true })).rejects.toThrow("Process exited with code 1");
       expect(mockProcess.kill).toHaveBeenCalled();
     });
   });
@@ -182,14 +218,38 @@ describe("AppService", () => {
 
     test("should wait for process to exit if wait option is true", async () => {
       await appService.start();
+      (mockProcess.wait as jest.Mock).mockResolvedValue({ finished: true });
       await appService.stop({ wait: true });
       expect(mockProcess.wait).toHaveBeenCalled();
     });
 
-    test("should kill the process if wait times out", async () => {
+    test("should throw an error on timeout when waiting for app to stop", async () => {
       await appService.start();
-      (mockProcess.wait as jest.Mock).mockRejectedValue(new Error("Timeout"));
-      await expect(appService.stop({ wait: true, timeout: 1000 })).rejects.toThrow("Timeout");
+      const timeoutResult: WaitResult = {
+        finished: false,
+        timeout: true,
+        output: mockProcess.output,
+      };
+      (mockProcess.wait as jest.Mock).mockResolvedValue(timeoutResult);
+
+      await expect(appService.stop({ wait: true, timeout: 1000 })).rejects.toThrow(
+        "App did not stop within 1000ms",
+      );
+      expect(mockProcess.kill).toHaveBeenCalled();
+    });
+
+    test("should throw an error on process exit with non-zero code when waiting for app to stop", async () => {
+      await appService.start();
+      const exitResult: WaitResult = {
+        finished: false,
+        exitCode: 1,
+        output: mockProcess.output,
+      };
+      (mockProcess.wait as jest.Mock).mockResolvedValue(exitResult);
+
+      await expect(appService.stop({ wait: true })).rejects.toThrow(
+        "App failed to stop with exit code 1",
+      );
       expect(mockProcess.kill).toHaveBeenCalled();
     });
   });
