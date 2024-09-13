@@ -5,8 +5,14 @@ import { createDeferred } from "./promise";
 
 interface WaitForEventOptions<T> {
   condition: (payload: T) => boolean;
-  onTimeout?: () => void;
   timeout?: number;
+}
+
+export interface WaitResult {
+  finished: boolean;
+  timeout?: boolean;
+  exitCode?: number;
+  output: ProcessOutput;
 }
 
 export interface WaitForEventResult<T> {
@@ -91,25 +97,41 @@ export class Process {
     );
   }
 
-  async wait(timeout?: number): Promise<ProcessOutput> {
+  async wait(timeout?: number): Promise<WaitResult> {
     let timeoutHandle: NodeJS.Timeout | undefined;
 
     try {
       if (timeout === undefined) {
-        return await this.processFinished;
+        const output = await this.processFinished;
+        return {
+          finished: true,
+          exitCode: output.exitCode,
+          output,
+        };
       }
 
-      const timeoutPromise = new Promise<ProcessOutput>((_, reject) => {
+      const timeoutPromise = new Promise<WaitResult>((resolve) => {
         timeoutHandle = setTimeout(() => {
-          void this.kill();
-          reject(new Error(`Process timed out after ${timeout}ms`));
+          console.log(`[Process] Timeout waiting for process to finish after ${timeout}ms`);
+          this.kill();
+          resolve({
+            finished: false,
+            timeout: true,
+            output: this.output,
+          });
         }, timeout);
       });
 
-      return await Promise.race([this.processFinished, timeoutPromise]);
-    } catch (error) {
-      void this.kill();
-      throw error;
+      const processResult = await Promise.race<WaitResult>([
+        this.processFinished.then((output) => ({
+          finished: true,
+          exitCode: output.exitCode,
+          output,
+        })),
+        timeoutPromise,
+      ]);
+
+      return processResult;
     } finally {
       if (timeoutHandle !== undefined) {
         clearTimeout(timeoutHandle);
@@ -123,7 +145,6 @@ export class Process {
   }: WaitForEventOptions<T>): Promise<WaitForEventResult<T>> {
     return new Promise<WaitForEventResult<T>>((resolve) => {
       let resolved = false;
-
       const timeoutId = setTimeout(() => {
         console.log("[Process] Timeout waiting for event");
         cleanupListeners();
@@ -199,7 +220,6 @@ export class Process {
 export interface ProcessOptions {
   cmd: string;
   cwd?: string;
-  timeout?: number;
   onStdout?: (data: Buffer) => Promise<void> | void;
   onStderr?: (data: Buffer) => Promise<void> | void;
   onExit?: (code: number) => Promise<void> | void;
@@ -208,8 +228,8 @@ export interface ProcessOptions {
 export interface IProcessController {
   start(cmd: string): Promise<Process>;
   start(options: ProcessOptions): Promise<Process>;
-  startAndWait(cmd: string): Promise<ProcessOutput>;
-  startAndWait(options: ProcessOptions): Promise<ProcessOutput>;
+  startAndWait(cmd: string, timeout?: number): Promise<WaitResult>;
+  startAndWait(options: ProcessOptions & { timeout?: number }): Promise<WaitResult>;
 }
 
 export class ProcessController implements IProcessController {
@@ -222,20 +242,23 @@ export class ProcessController implements IProcessController {
     return await this.startProcess(options);
   }
 
-  async startAndWait(cmd: string): Promise<ProcessOutput>;
+  async startAndWait(cmd: string, timeout?: number): Promise<WaitResult>;
 
-  async startAndWait(options: ProcessOptions): Promise<ProcessOutput>;
+  async startAndWait(args: ProcessOptions & { timeout?: number }): Promise<WaitResult>;
 
-  async startAndWait(args: string | ProcessOptions): Promise<ProcessOutput> {
-    const options = typeof args === "string" ? { cmd: args } : args;
-    return await this.startAndWaitProcess(options);
+  async startAndWait(
+    args: string | (ProcessOptions & { timeout?: number }),
+    timeout?: number,
+  ): Promise<WaitResult> {
+    const options = typeof args === "string" ? { cmd: args, timeout } : args;
+    const process = await this.startProcess(options);
+    return await process.wait(options.timeout);
   }
 
   private async startProcess(options: ProcessOptions): Promise<Process> {
     const processOutput = new ProcessOutput();
     const spawnedProcess = spawn(options.cmd, [], { cwd: options.cwd, shell: true });
     const processDeferredOutput = createDeferred<ProcessOutput>();
-    let timeoutHandle: NodeJS.Timeout;
 
     spawnedProcess.stdout?.on("data", (data: Buffer) => {
       processOutput?.addMessage("stdout", data.toString());
@@ -248,7 +271,6 @@ export class ProcessController implements IProcessController {
     });
 
     spawnedProcess?.on("exit", (code) => {
-      clearTimeout(timeoutHandle);
       spawnedProcess.stdin?.end();
       processOutput?.finish(code ?? undefined);
       void options.onExit?.(code ?? 0);
@@ -261,21 +283,6 @@ export class ProcessController implements IProcessController {
       processOutput,
     );
 
-    if (options.timeout) {
-      timeoutHandle = setTimeout(() => {
-        if (spawnedProcess && !processOutput?.finished) {
-          spawnedProcess.kill();
-          processOutput.finish();
-          processDeferredOutput.reject(new Error(`Process timed out after ${options.timeout}ms`));
-        }
-      }, options.timeout);
-    }
-
     return process;
-  }
-
-  private async startAndWaitProcess(options: ProcessOptions): Promise<ProcessOutput> {
-    const process = await this.startProcess(options);
-    return await process.wait(options.timeout);
   }
 }
