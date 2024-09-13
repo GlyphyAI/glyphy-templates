@@ -233,9 +233,14 @@ export class AppService implements IAppService {
     this.appProcess.writeInput(message + "\n");
 
     if (options?.wait) {
-      await this.appProcess.wait(options?.timeout);
-      if (this.appProcess?.running) {
+      const result = await this.appProcess.wait(options?.timeout);
+      if (!result.finished) {
         await this.killAppProcess();
+        if (result.timeout) {
+          throw new Error(`App did not stop within ${options?.timeout}ms`);
+        } else {
+          throw new Error(`App failed to stop with exit code ${result.exitCode}`);
+        }
       }
     } else {
       await this.killAppProcess();
@@ -250,11 +255,11 @@ export class AppService implements IAppService {
       this.appProcess?.kill();
 
       // Wait for the app to exit gracefully
-      await this.appProcess?.wait(60000);
+      const result = await this.appProcess?.wait(60000);
 
       // If the app is still running, force kill it
-      if (this.appProcess?.running) {
-        this.appProcess.kill("SIGKILL");
+      if (result && !result.finished) {
+        this.appProcess?.kill("SIGKILL");
       }
     } catch (error) {
       console.error("Failed to force kill the app:", error);
