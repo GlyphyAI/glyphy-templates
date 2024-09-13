@@ -148,12 +148,12 @@ export class AppService implements IAppService {
         },
       });
 
-      if (!result.eventReceived) {
+      if (result.isErr()) {
         await this.killAppProcess();
-        if (result.timeout) {
+        if (result.error.type === "timeout") {
           throw new Error(`Timeout waiting for app to start after ${options.timeout}ms`);
-        } else if (result.exitCode !== undefined) {
-          throw new Error(`Process exited with code ${result.exitCode}`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`Process exited with code ${result.error.exitCode}`);
         } else {
           throw new Error("Unknown error waiting for app to start");
         }
@@ -200,12 +200,12 @@ export class AppService implements IAppService {
         },
       });
 
-      if (!result.eventReceived) {
+      if (result.isErr()) {
         await this.killAppProcess();
-        if (result.timeout) {
+        if (result.error.type === "timeout") {
           throw new Error(`Timeout waiting for app to reload after ${options.timeout}ms`);
-        } else if (result.exitCode !== undefined) {
-          throw new Error(`Process exited with code ${result.exitCode}`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`Process exited with code ${result.error.exitCode}`);
         } else {
           throw new Error("Unknown error waiting for app to reload");
         }
@@ -234,12 +234,14 @@ export class AppService implements IAppService {
 
     if (options?.wait) {
       const result = await this.appProcess.wait(options?.timeout);
-      if (!result.finished) {
+      if (result.isErr()) {
         await this.killAppProcess();
-        if (result.timeout) {
+        if (result.error.type === "timeout") {
           throw new Error(`App did not stop within ${options?.timeout}ms`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`App failed to stop with exit code ${result.error.exitCode}`);
         } else {
-          throw new Error(`App failed to stop with exit code ${result.exitCode}`);
+          throw new Error("Unknown error waiting for app to stop");
         }
       }
     } else {
@@ -258,7 +260,7 @@ export class AppService implements IAppService {
       const result = await this.appProcess?.wait(60000);
 
       // If the app is still running, force kill it
-      if (result && !result.finished) {
+      if (result?.unwrapOr(null)?.running) {
         this.appProcess?.kill("SIGKILL");
       }
     } catch (error) {
