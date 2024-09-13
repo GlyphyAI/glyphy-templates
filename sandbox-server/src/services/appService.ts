@@ -71,7 +71,7 @@ export class AppService implements IAppService {
   }
 
   async start(options?: WaitOptions): Promise<ProcessOutput> {
-    if (this.appProcess) {
+    if (this.appProcess?.running) {
       throw new Error("Another app is already running");
     }
 
