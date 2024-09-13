@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import { ok } from "neverthrow";
 import { CommandService } from "~/services/commandService";
+
 import type { IProcessController, ProcessOutput } from "~/utils/process";
 
 describe("CommandService", () => {
@@ -33,10 +35,7 @@ describe("CommandService", () => {
       finished: true,
     };
 
-    mockProcessController.startAndWait.mockResolvedValue({
-      finished: true,
-      output: expectedOutput as ProcessOutput,
-    });
+    mockProcessController.startAndWait.mockResolvedValue(ok(expectedOutput as ProcessOutput));
 
     const result = await commandService.execute(command);
 

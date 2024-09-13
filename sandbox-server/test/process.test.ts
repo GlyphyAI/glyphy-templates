@@ -1,5 +1,7 @@
 import { ProcessController } from "~/utils/process";
 
+import type { ExitCodeError, TimeoutError } from "~/utils/process";
+
 describe("ProcessController", () => {
   let controller: ProcessController;
 
@@ -13,10 +15,17 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    expect(result.finished).toBe(true);
-    expect(result.output.stdout).toContain("Hello, World!");
-    expect(result.output.stderr).toContain("Goodbye, World!");
-    expect(result.output.exitCode).toBe(0);
+    result.match(
+      (output) => {
+        expect(output.finished).toBe(true);
+        expect(output.stdout).toContain("Hello, World!");
+        expect(output.stderr).toContain("Goodbye, World!");
+        expect(output.exitCode).toBe(0);
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Process timeout", async () => {
@@ -25,9 +34,15 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    expect(result.finished).toBe(false);
-    expect(result.timeout).toBe(true);
-    expect(result.output.stdout).not.toContain("This should not be printed");
+    result.match(
+      (output) => {
+        fail(`Expected timeout, but got success: ${JSON.stringify(output)}`);
+      },
+      (error) => {
+        expect(error.type).toBe("timeout");
+        expect((error as TimeoutError).timeout).toBe(2000);
+      },
+    );
   });
 
   test("Sending input data to stdin", async () => {
@@ -41,8 +56,15 @@ describe("ProcessController", () => {
     stdinProcess.writeInput("Hello from stdin!\n");
     const stdinResult = await stdinProcess.wait();
 
-    expect(stdinResult.finished).toBe(true);
-    expect(stdinResult.output.stdout).toContain("You entered: Hello from stdin!");
+    stdinResult.match(
+      (output) => {
+        expect(output.finished).toBe(true);
+        expect(output.stdout).toContain("You entered: Hello from stdin!");
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Starting a new process while one is running", async () => {
@@ -51,7 +73,7 @@ describe("ProcessController", () => {
     await expect(controller.start({ cmd: 'echo "This should succeed"' })).resolves.toBeDefined();
 
     const result = await process1.wait();
-    expect(result.finished).toBe(true);
+    expect(result.isOk()).toBe(true);
   });
 
   test("Basic error handling", async () => {
@@ -60,9 +82,16 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    expect(result.finished).toBe(true);
-    expect(result.output.exitCode).toBe(1);
-    expect(result.output.stderr).toContain("error");
+    result.match(
+      (output) => {
+        expect(output.finished).toBe(true);
+        expect(output.exitCode).toBe(1);
+        expect(output.stderr).toContain("error");
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Kill process and ensure it was killed", async () => {
@@ -73,8 +102,17 @@ describe("ProcessController", () => {
     }, 1000);
 
     const result = await process.wait();
-    expect(result.finished).toBe(true);
-    expect(result.output.exitCode).toBeUndefined();
+    result.match(
+      (output) => {
+        fail(
+          `Expected error due to process being killed, but got success: ${JSON.stringify(output)}`,
+        );
+      },
+      (error) => {
+        expect(error.type).toBe("exit");
+        expect((error as ExitCodeError).exitCode).toBeUndefined();
+      },
+    );
   });
 
   test("Handling a process with no output", async () => {
@@ -83,10 +121,17 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    expect(result.finished).toBe(true);
-    expect(result.output.stdout).toBe("");
-    expect(result.output.stderr).toBe("");
-    expect(result.output.exitCode).toBe(0);
+    result.match(
+      (output) => {
+        expect(output.finished).toBe(true);
+        expect(output.stdout).toBe("");
+        expect(output.stderr).toBe("");
+        expect(output.exitCode).toBe(0);
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Process exit with non-zero code", async () => {
@@ -95,8 +140,15 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    expect(result.finished).toBe(true);
-    expect(result.output.exitCode).toBe(2);
+    result.match(
+      (output) => {
+        expect(output.finished).toBe(true);
+        expect(output.exitCode).toBe(2);
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Wait for event with successful condition", async () => {
@@ -109,8 +161,14 @@ describe("ProcessController", () => {
       timeout: 3000,
     });
 
-    expect(eventResult.eventReceived).toBe(true);
-    expect(eventResult.data).toContain("Event occurred");
+    eventResult.match(
+      (value) => {
+        expect(value).toContain("Event occurred");
+      },
+      (error) => {
+        fail(`Expected success, but got error: ${JSON.stringify(error)}`);
+      },
+    );
   });
 
   test("Wait for event with timeout", async () => {
@@ -123,12 +181,17 @@ describe("ProcessController", () => {
       timeout: 2000,
     });
 
-    if (eventResult.timeout) {
-      process.kill();
-    }
+    eventResult.match(
+      (value) => {
+        fail(`Expected timeout, but got success: ${JSON.stringify(value)}`);
+      },
+      (error) => {
+        expect(error.type).toBe("timeout");
+        expect((error as TimeoutError).timeout).toBe(2000);
+      },
+    );
 
-    expect(eventResult.eventReceived).toBe(false);
-    expect(eventResult.timeout).toBe(true);
+    process.kill();
   });
 
   test("Wait for event with process exit", async () => {
@@ -136,12 +199,19 @@ describe("ProcessController", () => {
       cmd: "exit 3",
     });
 
-    const eventResult = await process.waitForEvent({
+    const eventResult = await process.waitForEvent<boolean>({
       condition: () => false,
       timeout: 2000,
     });
 
-    expect(eventResult.eventReceived).toBe(false);
-    expect(eventResult.exitCode).toBe(3);
+    eventResult.match(
+      (value) => {
+        fail(`Expected exit error, but got success: ${JSON.stringify(value)}`);
+      },
+      (error) => {
+        expect(error.type).toBe("exit");
+        expect((error as ExitCodeError).exitCode).toBe(3);
+      },
+    );
   });
 });
