@@ -1,3 +1,5 @@
+import treeKill from "tree-kill";
+
 import { type ChildProcess, spawn } from "child_process";
 import { createDeferred } from "./promise";
 
@@ -131,11 +133,22 @@ export class Process {
   }
 
   kill(signal: NodeJS.Signals | number = "SIGTERM"): void {
+    if (!this.process.pid) {
+      return;
+    }
+
     try {
-      this.process.stdin?.end();
-      this.process.kill(signal);
+      console.log("[Process] Killing process and its children", this.process.pid);
+      this.process?.stdin?.end();
+      treeKill(this.process.pid, signal, (err) => {
+        if (err) {
+          console.error("[Process] Error killing process tree", err);
+        } else {
+          console.log("[Process] Process tree killed");
+        }
+      });
     } catch (error) {
-      // ignoring the potential error from kill
+      console.log("[Process] Error killing process", error);
     }
   }
 
