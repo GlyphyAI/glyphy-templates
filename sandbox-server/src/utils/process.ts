@@ -70,8 +70,17 @@ export class Process {
     readonly output: ProcessOutput,
   ) {}
 
-  get pid(): number {
-    return this.process.pid!;
+  get pid(): number | undefined {
+    return this.process.pid;
+  }
+
+  get running(): boolean {
+    return (
+      this.process.pid !== undefined &&
+      !this.process.killed &&
+      this.process.exitCode === null &&
+      this.process.signalCode === null
+    );
   }
 
   async wait(timeout?: number): Promise<ProcessOutput> {
