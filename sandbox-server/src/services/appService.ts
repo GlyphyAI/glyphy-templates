@@ -229,6 +229,23 @@ export class AppService implements IAppService {
     return output;
   }
 
+  private async killAppProcess(): Promise<void> {
+    try {
+      // Try to kill the app
+      this.appProcess?.kill();
+
+      // Wait for the app to exit gracefully
+      await this.appProcess?.wait(60000);
+
+      // If the app is still running, force kill it
+      if (this.appProcess?.running) {
+        this.appProcess.kill("SIGKILL");
+      }
+    } catch (error) {
+      console.error("Failed to force kill the app:", error);
+    }
+  }
+
   private flushErrors(messages: string[]): void {
     this.broadcaster.broadcast({
       event: "app:error",
