@@ -18,8 +18,10 @@ interface WaitOptions {
   timeout?: number;
 }
 
+export type AppStatus = "idle" | "stopped" | "running";
+
 export interface IAppService {
-  init(): Promise<ProcessOutput>;
+  status(): Promise<AppStatus>;
   start(options?: WaitOptions): Promise<ProcessOutput>;
   reload(options?: WaitOptions): Promise<ProcessOutput>;
   stop(options?: WaitOptions): Promise<ProcessOutput>;
@@ -49,6 +51,14 @@ export class AppService implements IAppService {
     this.processController = processController;
     this.stderrBufferedStream = stderrBufferedStream;
     this.stderrBufferedStream.flushCallback = this.flushErrors.bind(this);
+  }
+
+  async status(): Promise<AppStatus> {
+    if (!this.appProcess) {
+      return "idle";
+    }
+
+    return this.appProcess.running ? "running" : "stopped";
   }
 
   async init(options?: WaitOptions): Promise<ProcessOutput> {
