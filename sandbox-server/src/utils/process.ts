@@ -3,9 +3,17 @@ import treeKill from "tree-kill";
 import { type ChildProcess, spawn } from "child_process";
 import { createDeferred } from "./promise";
 
-interface EventOptions<T> {
+interface WaitForEventOptions<T> {
   condition: (payload: T) => boolean;
+  onTimeout?: () => void;
   timeout?: number;
+}
+
+export interface WaitForEventResult<T> {
+  eventReceived: boolean;
+  data?: T;
+  timeout?: boolean;
+  exitCode?: number;
 }
 
 type ProcessMessageType = "stdout" | "stderr" | "exit";
@@ -109,34 +117,52 @@ export class Process {
     }
   }
 
-  async waitForEvent<T = unknown>({ condition, timeout = 5000 }: EventOptions<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
+  async waitForEvent<T = unknown>({
+    condition,
+    timeout = 5000,
+  }: WaitForEventOptions<T>): Promise<WaitForEventResult<T>> {
+    return new Promise<WaitForEventResult<T>>((resolve) => {
+      let resolved = false;
+
       const timeoutId = setTimeout(() => {
-        this.process.stdout?.off("data", onEvent);
-        this.process.off("exit", onExit);
-        reject(new Error("Timeout waiting for event"));
+        console.log("[Process] Timeout waiting for event");
+        cleanupListeners();
+        if (!resolved) {
+          resolved = true;
+          resolve({ eventReceived: false, timeout: true });
+        }
       }, timeout);
 
-      const onEvent = (payload: T) => {
+      const onEvent = (data: Buffer) => {
+        const payload = data.toString() as T;
         if (!condition || condition(payload)) {
           clearTimeout(timeoutId);
           cleanupListeners();
-          resolve(payload);
+          if (!resolved) {
+            resolved = true;
+            resolve({ eventReceived: true, data: payload });
+          }
         }
       };
 
       const onExit = (code: number) => {
+        console.log("[Process] Process exited", code);
         clearTimeout(timeoutId);
         cleanupListeners();
-        reject(new Error(`Process exited with code ${code}`));
+        if (!resolved) {
+          resolved = true;
+          resolve({ eventReceived: false, exitCode: code ?? undefined });
+        }
       };
 
       const cleanupListeners = () => {
         this.process.stdout?.off("data", onEvent);
+        this.process.stderr?.off("data", onEvent);
         this.process.off("exit", onExit);
       };
 
       this.process.stdout?.on("data", onEvent);
+      this.process.stderr?.on("data", onEvent);
       this.process.on("exit", onExit);
     });
   }
