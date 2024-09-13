@@ -12,6 +12,14 @@ export default class AppRouter {
   }
 
   private setupRoutes() {
+    this.router.get(
+      "/status",
+      asyncHandler(async (req, res) => {
+        const status = await this.appService.status();
+        res.json({ status });
+      }),
+    );
+
     this.router.post(
       "/start",
       asyncHandler(async (req, res) => {
