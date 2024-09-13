@@ -22,6 +22,7 @@ export type AppStatus = "idle" | "stopped" | "running";
 
 export interface IAppService {
   status(): Promise<AppStatus>;
+  init(options?: WaitOptions): Promise<ProcessOutput>;
   start(options?: WaitOptions): Promise<ProcessOutput>;
   reload(options?: WaitOptions): Promise<ProcessOutput>;
   stop(options?: WaitOptions): Promise<ProcessOutput>;
