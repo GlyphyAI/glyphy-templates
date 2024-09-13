@@ -125,9 +125,6 @@ export class AppService implements IAppService {
           params: { code, error: null },
         });
       }
-
-      this.appProcess = null;
-      this.appId = null;
     };
 
     this.appProcess = await this.processController.start({
@@ -139,21 +136,27 @@ export class AppService implements IAppService {
     });
 
     if (options?.wait) {
-      try {
-        await this.appProcess.waitForEvent({
-          timeout: options?.timeout,
-          condition: (payload: string) => {
-            const flutterEvents = parseFlutterEvents(payload);
-            if (!flutterEvents) {
-              return false;
-            }
+      const result = await this.appProcess.waitForEvent({
+        timeout: options?.timeout,
+        condition: (payload: string) => {
+          const flutterEvents = parseFlutterEvents(payload);
+          if (!flutterEvents) {
+            return false;
+          }
 
-            return flutterEvents.some((event) => event.event === "app.started");
-          },
-        });
-      } catch (error) {
-        await this.stop();
-        throw error;
+          return flutterEvents.some((event) => event.event === "app.started");
+        },
+      });
+
+      if (!result.eventReceived) {
+        await this.killAppProcess();
+        if (result.timeout) {
+          throw new Error(`Timeout waiting for app to start after ${options.timeout}ms`);
+        } else if (result.exitCode !== undefined) {
+          throw new Error(`Process exited with code ${result.exitCode}`);
+        } else {
+          throw new Error("Unknown error waiting for app to start");
+        }
       }
     }
 
@@ -183,23 +186,29 @@ export class AppService implements IAppService {
     this.appProcess.writeInput(message + "\n");
 
     if (options?.wait) {
-      try {
-        await this.appProcess.waitForEvent({
-          timeout: options?.timeout,
-          condition: (payload: string) => {
-            const flutterEvents = parseFlutterEvents(payload);
-            if (!flutterEvents) {
-              return false;
-            }
+      const result = await this.appProcess.waitForEvent({
+        timeout: options?.timeout,
+        condition: (payload: string) => {
+          const flutterEvents = parseFlutterEvents(payload);
+          if (!flutterEvents) {
+            return false;
+          }
 
-            return flutterEvents.some(
-              (event) => event.event === "app.progress" && event.params.finished === true,
-            );
-          },
-        });
-      } catch (error) {
-        await this.stop();
-        throw error;
+          return flutterEvents.some(
+            (event) => event.event === "app.progress" && event.params.finished === true,
+          );
+        },
+      });
+
+      if (!result.eventReceived) {
+        await this.killAppProcess();
+        if (result.timeout) {
+          throw new Error(`Timeout waiting for app to reload after ${options.timeout}ms`);
+        } else if (result.exitCode !== undefined) {
+          throw new Error(`Process exited with code ${result.exitCode}`);
+        } else {
+          throw new Error("Unknown error waiting for app to reload");
+        }
       }
     }
 
@@ -224,18 +233,13 @@ export class AppService implements IAppService {
     this.appProcess.writeInput(message + "\n");
 
     if (options?.wait) {
-      try {
-        await this.appProcess.wait(options?.timeout);
-      } catch (error) {
-        this.appProcess.kill();
-        throw error;
+      await this.appProcess.wait(options?.timeout);
+      if (this.appProcess?.running) {
+        await this.killAppProcess();
       }
     } else {
-      this.appProcess.kill();
+      await this.killAppProcess();
     }
-
-    this.appProcess = null;
-    this.appId = null;
 
     return output;
   }
