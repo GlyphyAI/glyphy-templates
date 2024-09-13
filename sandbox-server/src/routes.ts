@@ -6,19 +6,12 @@ import GitRouter from "./routers/gitRouter";
 import HealthRouter from "./routers/healthRouter";
 import TerminalRouter from "./routers/terminalRouter";
 
-import { EventEmitter } from "node:events";
-import { AppService } from "./services/appService";
-import { CommandService } from "./services/commandService";
-import { DirectoryService } from "./services/directoryService";
-import { FileService } from "./services/fileService";
-import { createGitService } from "./services/gitServiceFactory";
-import { TerminalService } from "./services/terminalService";
+import { ServiceContainer } from "./services/serviceContainer";
 import { loadTemplate } from "./utils/loadTemplate";
-import { ProcessController } from "./utils/process";
-import { BufferedStream } from "./utils/stream";
 
 import type { App, IAppRegistry } from "./app";
 import type { Config } from "./config";
+import type { ICommandService } from "./services/commandService";
 
 export class AppRoutes {
   constructor(
@@ -27,6 +20,7 @@ export class AppRoutes {
   ) {}
 
   public async configureRoutes() {
+    const serviceContainer = new ServiceContainer(this.config);
     const template = loadTemplate(this.config.workingDirectory, this.config.templatePath);
 
     await this.appRegistry.registerRouter("/api/health", () => {
@@ -34,28 +28,21 @@ export class AppRoutes {
       return healthRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/execute", () => {
-      const processController = new ProcessController();
-      const commandService = new CommandService({
-        workingDirectory: this.config.workingDirectory,
-        processController: processController,
-      });
+    await this.appRegistry.registerRouter("/api/execute", async () => {
+      const commandService = await serviceContainer.getCommandService();
       const commandRouter = new CommandRouter(commandService);
       return commandRouter.router;
     });
 
     await this.appRegistry.registerRouter("/api/app", async (app) => {
-      const processController = new ProcessController();
-      const stderrBufferedStream = new BufferedStream(3000);
-      const appService = new AppService({
+      const appService = await serviceContainer.getAppService({
         runCommand: template.previews.web?.command,
-        workingDirectory: this.config.workingDirectory,
-        processController: processController,
         broadcaster: app.broadcaster,
-        stderrBufferedStream: stderrBufferedStream,
       });
 
       if (this.config.initAppOnBoot) {
+        const commandService = await serviceContainer.getCommandService();
+        await installDependencies(this.config.processRuntime, commandService);
         await appService.init({ wait: true, timeout: 60000 });
       }
 
@@ -63,37 +50,39 @@ export class AppRoutes {
       return appRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/files", () => {
-      const fileService = new FileService();
+    await this.appRegistry.registerRouter("/api/files", async () => {
+      const fileService = await serviceContainer.getFileService();
       const fileRouter = new FileRouter(fileService);
       return fileRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/directories", () => {
-      const directoryService = new DirectoryService();
+    await this.appRegistry.registerRouter("/api/directories", async () => {
+      const directoryService = await serviceContainer.getDirectoryService();
       const directoryRouter = new DirectoryRouter(directoryService);
       return directoryRouter.router;
     });
 
     await this.appRegistry.registerRouter("/api/git", async () => {
-      try {
-        const gitService = await createGitService(this.config.workingDirectory);
-        const gitRouter = new GitRouter(gitService);
-        return gitRouter.router;
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error("Failed to create git service:", error.message);
-        }
-
-        throw error;
-      }
+      const gitService = await serviceContainer.getGitService();
+      const gitRouter = new GitRouter(gitService);
+      return gitRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/terminals", (app) => {
-      const eventEmitter = new EventEmitter();
-      const terminalService = new TerminalService(eventEmitter);
+    await this.appRegistry.registerRouter("/api/terminals", async (app) => {
+      const terminalService = await serviceContainer.getTerminalService();
       const terminalRouter = new TerminalRouter(terminalService, app.broadcaster);
       return terminalRouter.router;
     });
+  }
+}
+
+function installDependencies(runtime: Config["processRuntime"], commandService: ICommandService) {
+  switch (runtime) {
+    case "flutter":
+      return commandService.execute("flutter pub get");
+    case "dart":
+      return commandService.execute("dart pub get");
+    default:
+      throw new Error(`Unsupported runtime.`);
   }
 }

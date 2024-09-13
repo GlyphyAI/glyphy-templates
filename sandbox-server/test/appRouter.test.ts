@@ -36,7 +36,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App started and ready");
     expect(parsedResponse.output).toBe("Started");
-    expect(mockAppService.start).toHaveBeenCalledWith({ wait: true, timeout: 10000 });
+    expect(mockAppService.start).toHaveBeenCalledWith({ wait: true, timeout: 30000 });
   });
 
   test("POST /start without wait should start the app asynchronously", async () => {
@@ -46,7 +46,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App started");
     expect(parsedResponse.output).toBe("Started");
-    expect(mockAppService.start).toHaveBeenCalledWith({ wait: false, timeout: 10000 });
+    expect(mockAppService.start).toHaveBeenCalledWith({ wait: false, timeout: 30000 });
   });
 
   test("POST /stop should stop the app", async () => {
@@ -56,7 +56,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App stopped");
     expect(parsedResponse.output).toBe("Stopped");
-    expect(mockAppService.stop).toHaveBeenCalledWith({ wait: true, timeout: 10000 });
+    expect(mockAppService.stop).toHaveBeenCalledWith({ wait: true, timeout: 30000 });
   });
 
   test("POST /stop without wait should stop the app asynchronously", async () => {
@@ -66,7 +66,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App stopping");
     expect(parsedResponse.output).toBe("Stopped");
-    expect(mockAppService.stop).toHaveBeenCalledWith({ wait: false, timeout: 10000 });
+    expect(mockAppService.stop).toHaveBeenCalledWith({ wait: false, timeout: 30000 });
   });
 
   test("POST /reload should reload the app", async () => {
@@ -76,7 +76,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App reloaded and ready");
     expect(parsedResponse.output).toBe("Reloaded");
-    expect(mockAppService.reload).toHaveBeenCalledWith({ wait: true, timeout: 10000 });
+    expect(mockAppService.reload).toHaveBeenCalledWith({ wait: true, timeout: 30000 });
   });
 
   test("POST /reload without wait should reload the app asynchronously", async () => {
@@ -86,7 +86,7 @@ describe("AppRouter", () => {
     const parsedResponse = responseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("App reloaded");
     expect(parsedResponse.output).toBe("Reloaded");
-    expect(mockAppService.reload).toHaveBeenCalledWith({ wait: false, timeout: 10000 });
+    expect(mockAppService.reload).toHaveBeenCalledWith({ wait: false, timeout: 30000 });
   });
 
   test("should handle errors", async () => {

@@ -18,8 +18,11 @@ interface WaitOptions {
   timeout?: number;
 }
 
+export type AppStatus = "idle" | "stopped" | "running";
+
 export interface IAppService {
-  init(): Promise<ProcessOutput>;
+  status(): Promise<AppStatus>;
+  init(options?: WaitOptions): Promise<ProcessOutput>;
   start(options?: WaitOptions): Promise<ProcessOutput>;
   reload(options?: WaitOptions): Promise<ProcessOutput>;
   stop(options?: WaitOptions): Promise<ProcessOutput>;
@@ -51,6 +54,14 @@ export class AppService implements IAppService {
     this.stderrBufferedStream.flushCallback = this.flushErrors.bind(this);
   }
 
+  async status(): Promise<AppStatus> {
+    if (!this.appProcess) {
+      return "idle";
+    }
+
+    return this.appProcess.running ? "running" : "stopped";
+  }
+
   async init(options?: WaitOptions): Promise<ProcessOutput> {
     if (!this.appProcess) {
       return await this.start(options);
@@ -60,7 +71,7 @@ export class AppService implements IAppService {
   }
 
   async start(options?: WaitOptions): Promise<ProcessOutput> {
-    if (this.appProcess) {
+    if (this.appProcess?.running) {
       throw new Error("Another app is already running");
     }
 
@@ -114,9 +125,6 @@ export class AppService implements IAppService {
           params: { code, error: null },
         });
       }
-
-      this.appProcess = null;
-      this.appId = null;
     };
 
     this.appProcess = await this.processController.start({
@@ -128,21 +136,27 @@ export class AppService implements IAppService {
     });
 
     if (options?.wait) {
-      try {
-        await this.appProcess.waitForEvent({
-          timeout: options?.timeout,
-          condition: (payload: string) => {
-            const flutterEvents = parseFlutterEvents(payload);
-            if (!flutterEvents) {
-              return false;
-            }
+      const result = await this.appProcess.waitForEvent({
+        timeout: options?.timeout,
+        condition: (payload: string) => {
+          const flutterEvents = parseFlutterEvents(payload);
+          if (!flutterEvents) {
+            return false;
+          }
 
-            return flutterEvents.some((event) => event.event === "app.started");
-          },
-        });
-      } catch (error) {
-        await this.stop();
-        throw error;
+          return flutterEvents.some((event) => event.event === "app.started");
+        },
+      });
+
+      if (result.isErr()) {
+        await this.killAppProcess();
+        if (result.error.type === "timeout") {
+          throw new Error(`Timeout waiting for app to start after ${options.timeout}ms`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`Process exited with code ${result.error.exitCode}`);
+        } else {
+          throw new Error("Unknown error waiting for app to start");
+        }
       }
     }
 
@@ -150,7 +164,7 @@ export class AppService implements IAppService {
   }
 
   async reload(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess) {
+    if (!this.appProcess?.running) {
       return await this.start();
     }
 
@@ -172,23 +186,29 @@ export class AppService implements IAppService {
     this.appProcess.writeInput(message + "\n");
 
     if (options?.wait) {
-      try {
-        await this.appProcess.waitForEvent({
-          timeout: options?.timeout,
-          condition: (payload: string) => {
-            const flutterEvents = parseFlutterEvents(payload);
-            if (!flutterEvents) {
-              return false;
-            }
+      const result = await this.appProcess.waitForEvent({
+        timeout: options?.timeout,
+        condition: (payload: string) => {
+          const flutterEvents = parseFlutterEvents(payload);
+          if (!flutterEvents) {
+            return false;
+          }
 
-            return flutterEvents.some(
-              (event) => event.event === "app.progress" && event.params.finished === true,
-            );
-          },
-        });
-      } catch (error) {
-        await this.stop();
-        throw error;
+          return flutterEvents.some(
+            (event) => event.event === "app.progress" && event.params.finished === true,
+          );
+        },
+      });
+
+      if (result.isErr()) {
+        await this.killAppProcess();
+        if (result.error.type === "timeout") {
+          throw new Error(`Timeout waiting for app to reload after ${options.timeout}ms`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`Process exited with code ${result.error.exitCode}`);
+        } else {
+          throw new Error("Unknown error waiting for app to reload");
+        }
       }
     }
 
@@ -196,7 +216,7 @@ export class AppService implements IAppService {
   }
 
   async stop(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess) {
+    if (!this.appProcess?.running) {
       throw new Error("No app is running");
     }
 
@@ -213,20 +233,39 @@ export class AppService implements IAppService {
     this.appProcess.writeInput(message + "\n");
 
     if (options?.wait) {
-      try {
-        await this.appProcess.wait(options?.timeout);
-      } catch (error) {
-        this.appProcess.kill();
-        throw error;
+      const result = await this.appProcess.wait(options?.timeout);
+      if (result.isErr()) {
+        await this.killAppProcess();
+        if (result.error.type === "timeout") {
+          throw new Error(`App did not stop within ${options?.timeout}ms`);
+        } else if (result.error.type === "exit") {
+          throw new Error(`App failed to stop with exit code ${result.error.exitCode}`);
+        } else {
+          throw new Error("Unknown error waiting for app to stop");
+        }
       }
     } else {
-      this.appProcess.kill();
+      await this.killAppProcess();
     }
 
-    this.appProcess = null;
-    this.appId = null;
-
     return output;
+  }
+
+  private async killAppProcess(): Promise<void> {
+    try {
+      // Try to kill the app
+      this.appProcess?.kill();
+
+      // Wait for the app to exit gracefully
+      const result = await this.appProcess?.wait(60000);
+
+      // If the app is still running, force kill it
+      if (result?.unwrapOr(null)?.running) {
+        this.appProcess?.kill("SIGKILL");
+      }
+    } catch (error) {
+      console.error("Failed to force kill the app:", error);
+    }
   }
 
   private flushErrors(messages: string[]): void {

@@ -19,8 +19,10 @@
     "express": "^4.19.2",
     "fast-glob": "^3.3.2",
     "fs-extra": "^11.2.0",
+    "neverthrow": "^8.0.0",
     "node-pty": "^1.0.0",
     "simple-git": "^3.25.0",
+    "tree-kill": "^1.2.2",
     "ws": "^8.17.1",
     "zod": "^3.23.8"
   },
