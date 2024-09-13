@@ -19,9 +19,21 @@ export class CommandService implements ICommandService {
   }
 
   async execute(command: string): Promise<ProcessOutput> {
-    return this.processController.startAndWait({
+    const result = await this.processController.startAndWait({
       cmd: command,
       cwd: this.workingDirectory,
     });
+
+    if (!result.finished) {
+      if (result.timeout) {
+        throw new Error("Command timed out");
+      } else if (result.exitCode !== 0) {
+        throw new Error(`Command failed with exit code ${result.exitCode}`);
+      } else {
+        throw new Error("Command failed");
+      }
+    }
+
+    return result.output;
   }
 }
