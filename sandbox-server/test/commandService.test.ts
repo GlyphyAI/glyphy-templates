@@ -33,7 +33,10 @@ describe("CommandService", () => {
       finished: true,
     };
 
-    mockProcessController.startAndWait.mockResolvedValue(expectedOutput as ProcessOutput);
+    mockProcessController.startAndWait.mockResolvedValue({
+      finished: true,
+      output: expectedOutput as ProcessOutput,
+    });
 
     const result = await commandService.execute(command);
 
