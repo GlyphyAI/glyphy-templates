@@ -17,7 +17,8 @@ export default class AppRouter {
       asyncHandler(async (req, res) => {
         try {
           const wait = req.query.wait === "true";
-          const output = await this.appService.start({ wait, timeout: 10000 });
+          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
+          const output = await this.appService.start({ wait, timeout });
           const message = wait ? "App started and ready" : "App started";
           res.json({ message, output });
         } catch (error) {
@@ -35,7 +36,8 @@ export default class AppRouter {
       asyncHandler(async (req, res) => {
         try {
           const wait = req.query.wait === "true";
-          const output = await this.appService.stop({ wait, timeout: 10000 });
+          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
+          const output = await this.appService.stop({ wait, timeout });
           const message = wait ? "App stopped" : "App stopping";
           res.json({ message, output });
         } catch (error) {
@@ -53,7 +55,8 @@ export default class AppRouter {
       asyncHandler(async (req, res) => {
         try {
           const wait = req.query.wait === "true";
-          const output = await this.appService.reload({ wait, timeout: 10000 });
+          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
+          const output = await this.appService.reload({ wait, timeout });
           const message = wait ? "App reloaded and ready" : "App reloaded";
           res.json({ message, output });
         } catch (error) {
