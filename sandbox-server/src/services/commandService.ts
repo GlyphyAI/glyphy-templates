@@ -24,16 +24,16 @@ export class CommandService implements ICommandService {
       cwd: this.workingDirectory,
     });
 
-    if (!result.finished) {
-      if (result.timeout) {
+    if (result.isErr()) {
+      if (result.error.type === "timeout") {
         throw new Error("Command timed out");
-      } else if (result.exitCode !== 0) {
-        throw new Error(`Command failed with exit code ${result.exitCode}`);
+      } else if (result.error.type === "exit") {
+        throw new Error(`Command failed with exit code ${result.error.exitCode}`);
       } else {
         throw new Error("Command failed");
       }
     }
 
-    return result.output;
+    return result.value;
   }
 }
