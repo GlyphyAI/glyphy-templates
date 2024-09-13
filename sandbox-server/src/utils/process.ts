@@ -1,39 +1,36 @@
 import treeKill from "tree-kill";
 
 import { type ChildProcess, spawn } from "child_process";
+import { err, ok, type Result } from "neverthrow";
 import { createDeferred } from "./promise";
+
+type ProcessMessage =
+  | { type: "stdout"; message: string }
+  | { type: "stderr"; message: string }
+  | { type: "exit"; exitCode: number | undefined };
+
+type ProcessMessageType = ProcessMessage["type"];
 
 interface WaitForEventOptions<T> {
   condition: (payload: T) => boolean;
   timeout?: number;
 }
 
-export interface WaitResult {
-  finished: boolean;
-  timeout?: boolean;
-  exitCode?: number;
-  output: ProcessOutput;
-}
+export type TimeoutError = {
+  type: "timeout";
+  timeout: number;
+};
 
-export interface WaitForEventResult<T> {
-  eventReceived: boolean;
-  data?: T;
-  timeout?: boolean;
-  exitCode?: number;
-}
+export type ExitCodeError = {
+  type: "exit";
+  exitCode: number | undefined;
+};
 
-type ProcessMessageType = "stdout" | "stderr" | "exit";
+export type ProcessError = TimeoutError | ExitCodeError;
 
-class ProcessMessage {
-  constructor(
-    readonly type: ProcessMessageType,
-    readonly message: string,
-  ) {}
+export type WaitResult = Result<ProcessOutput, ProcessError>;
 
-  toString(): string {
-    return this.message;
-  }
-}
+export type WaitForEventResult<T> = Result<T, ProcessError>;
 
 export class ProcessOutput {
   private readonly delimiter = "\n";
@@ -43,15 +40,15 @@ export class ProcessOutput {
 
   get stdout(): string {
     return this.messages
-      .filter((msg) => msg.type === "stdout")
-      .map((msg) => msg.toString())
+      .filter((msg): msg is { type: "stdout"; message: string } => msg.type === "stdout")
+      .map((msg) => msg.message)
       .join(this.delimiter);
   }
 
   get stderr(): string {
     return this.messages
-      .filter((msg) => msg.type === "stderr")
-      .map((msg) => msg.toString())
+      .filter((msg): msg is { type: "stderr"; message: string } => msg.type === "stderr")
+      .map((msg) => msg.message)
       .join(this.delimiter);
   }
 
@@ -68,7 +65,11 @@ export class ProcessOutput {
   }
 
   addMessage(type: ProcessMessageType, message: string): void {
-    this.messages.push(new ProcessMessage(type, message));
+    if (type === "exit") {
+      this.messages.push({ type, exitCode: parseInt(message) });
+    } else {
+      this.messages.push({ type, message });
+    }
   }
 
   finish(exitCode?: number): void {
@@ -103,31 +104,22 @@ export class Process {
     try {
       if (timeout === undefined) {
         const output = await this.processFinished;
-        return {
-          finished: true,
-          exitCode: output.exitCode,
-          output,
-        };
+
+        return output.exitCode === 0
+          ? ok(output)
+          : err({ type: "exit", exitCode: output.exitCode });
       }
 
       const timeoutPromise = new Promise<WaitResult>((resolve) => {
         timeoutHandle = setTimeout(() => {
           console.log(`[Process] Timeout waiting for process to finish after ${timeout}ms`);
           this.kill();
-          resolve({
-            finished: false,
-            timeout: true,
-            output: this.output,
-          });
+          resolve(err({ type: "timeout", timeout }));
         }, timeout);
       });
 
       const processResult = await Promise.race<WaitResult>([
-        this.processFinished.then((output) => ({
-          finished: true,
-          exitCode: output.exitCode,
-          output,
-        })),
+        this.processFinished.then((output) => ok(output)),
         timeoutPromise,
       ]);
 
@@ -150,7 +142,7 @@ export class Process {
         cleanupListeners();
         if (!resolved) {
           resolved = true;
-          resolve({ eventReceived: false, timeout: true });
+          resolve(err({ type: "timeout", timeout }));
         }
       }, timeout);
 
@@ -161,7 +153,7 @@ export class Process {
           cleanupListeners();
           if (!resolved) {
             resolved = true;
-            resolve({ eventReceived: true, data: payload });
+            resolve(ok(payload));
           }
         }
       };
@@ -172,7 +164,7 @@ export class Process {
         cleanupListeners();
         if (!resolved) {
           resolved = true;
-          resolve({ eventReceived: false, exitCode: code ?? undefined });
+          resolve(err({ type: "exit", exitCode: code }));
         }
       };
 
