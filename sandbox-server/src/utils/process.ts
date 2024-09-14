@@ -187,7 +187,6 @@ export class Process {
 
     try {
       console.log("[Process] Killing process and its children", this.process.pid);
-      this.process?.stdin?.end();
       treeKill(this.process.pid, signal, (err) => {
         if (err) {
           console.error("[Process] Error killing process tree", err);
