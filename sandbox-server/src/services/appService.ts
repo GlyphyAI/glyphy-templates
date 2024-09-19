@@ -165,7 +165,7 @@ export class AppService implements IAppService {
 
   async reload(options?: WaitOptions): Promise<ProcessOutput> {
     if (!this.appProcess?.running) {
-      return await this.start();
+      throw new Error("App is not running");
     }
 
     const output = this.appProcess.output;
