@@ -83,7 +83,7 @@ export class AppRoutes {
   }
 }
 
-function installDependencies(runtime: Config["processRuntime"], commandService: ICommandService) {
+function installDependencies(runtime: Config["appRuntime"], commandService: ICommandService) {
   switch (runtime) {
     case "flutter":
       return commandService.execute("flutter pub get");
