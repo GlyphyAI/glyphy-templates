@@ -135,10 +135,9 @@ describe("AppService", () => {
       expect(mockProcess.writeInput).toHaveBeenCalledWith(expect.stringContaining("app.restart"));
     });
 
-    test("should start a new app if none is running during reload", async () => {
-      (mockProcess.wait as jest.Mock).mockResolvedValue(ok({ exitCode: 0 }));
-      await appService.reload();
-      expect(processController.start).toHaveBeenCalled();
+    test("should throw an error if no app is running during reload", async () => {
+      await expect(appService.reload()).rejects.toThrow("App is not running");
+      expect(processController.start).not.toHaveBeenCalled();
     });
 
     test("should wait for app.progress event if wait option is true", async () => {

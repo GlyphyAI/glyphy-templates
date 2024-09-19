@@ -112,17 +112,17 @@ export class AppService implements IAppService {
       this.stderrBufferedStream.add(data.toString());
     };
 
-    const exitHandler = (code: number) => {
+    const exitHandler = (code: number | undefined) => {
       console.log(`Process exited with code ${code}`);
-      if (code !== 0) {
+      if (code === 0) {
         this.broadcaster.broadcast({
           event: "app:exit",
-          params: { code, error: this.appProcess?.output.stderr },
+          params: { code, error: null },
         });
       } else {
         this.broadcaster.broadcast({
           event: "app:exit",
-          params: { code, error: null },
+          params: { code, error: this.appProcess?.output.stderr },
         });
       }
     };
@@ -165,7 +165,7 @@ export class AppService implements IAppService {
 
   async reload(options?: WaitOptions): Promise<ProcessOutput> {
     if (!this.appProcess?.running) {
-      return await this.start();
+      throw new Error("App is not running");
     }
 
     const output = this.appProcess.output;
