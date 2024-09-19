@@ -10,12 +10,14 @@ import type { IFileService } from "~/services/fileService";
 
 const mockFileService: jest.Mocked<IFileService> = {
   listFiles: jest.fn().mockResolvedValue(["file1.txt", "file2.txt"]),
-  readFile: jest.fn().mockResolvedValue("Hello, World!"),
-  createFile: jest.fn().mockResolvedValue(undefined),
-  updateFile: jest.fn().mockResolvedValue(undefined),
-  renameFile: jest.fn().mockResolvedValue(undefined),
-  moveFile: jest.fn().mockResolvedValue(undefined),
-  deleteFile: jest.fn().mockResolvedValue(undefined),
+  readFiles: jest.fn().mockResolvedValue([
+    { path: "file1.txt", content: "Content 1" },
+    { path: "file2.txt", content: "Content 2" },
+  ]),
+  updateFiles: jest.fn().mockResolvedValue(undefined),
+  deleteFiles: jest.fn().mockResolvedValue(undefined),
+  moveFiles: jest.fn().mockResolvedValue(undefined),
+  renameFiles: jest.fn().mockResolvedValue(undefined),
 };
 
 const filesResponseSchema = z.array(z.string());
@@ -44,65 +46,87 @@ describe("FileRouter", () => {
     expect(mockFileService.listFiles).toHaveBeenCalledWith(".", { recursive: true });
   });
 
-  test("GET /read should read a file", async () => {
-    const response = await request(app).get("/api/file/read").query({ filePath: "file1.txt" });
-    expect(response.status).toBe(200);
-
-    const parsedResponse = z.object({ content: z.string() }).parse(response.body);
-    expect(parsedResponse.content).toBe("Hello, World!");
-    expect(mockFileService.readFile).toHaveBeenCalledWith("file1.txt");
-  });
-
-  test("POST /create should create a file", async () => {
+  test("POST /read should read multiple files", async () => {
     const response = await request(app)
-      .post("/api/file/create")
-      .send({ filePath: "file1.txt", content: "Hello, World!" });
+      .post("/api/file/read")
+      .send([{ path: "file1.txt" }, { path: "file2.txt" }]);
     expect(response.status).toBe(200);
 
-    const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("File file1.txt created successfully");
-    expect(mockFileService.createFile).toHaveBeenCalledWith("file1.txt", "Hello, World!");
+    const parsedResponse = z
+      .array(z.object({ path: z.string(), content: z.string() }))
+      .parse(response.body);
+    expect(parsedResponse).toEqual([
+      { path: "file1.txt", content: "Content 1" },
+      { path: "file2.txt", content: "Content 2" },
+    ]);
+    expect(mockFileService.readFiles).toHaveBeenCalledWith([
+      { path: "file1.txt" },
+      { path: "file2.txt" },
+    ]);
   });
 
-  test("PUT /update should update a file", async () => {
+  test("PUT /update should update multiple files", async () => {
     const response = await request(app)
       .put("/api/file/update")
-      .send({ filePath: "file1.txt", content: "Updated content" });
+      .send([
+        { path: "file1.txt", content: "Updated content 1" },
+        { path: "file2.txt", content: "Updated content 2" },
+      ]);
     expect(response.status).toBe(200);
 
     const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("File file1.txt updated successfully");
-    expect(mockFileService.updateFile).toHaveBeenCalledWith("file1.txt", "Updated content");
+    expect(parsedResponse.message).toBe("Files updated successfully");
+    expect(mockFileService.updateFiles).toHaveBeenCalledWith([
+      { path: "file1.txt", content: "Updated content 1" },
+      { path: "file2.txt", content: "Updated content 2" },
+    ]);
   });
 
-  test("POST /rename should rename a file", async () => {
+  test("DELETE /delete should delete multiple files", async () => {
     const response = await request(app)
-      .post("/api/file/rename")
-      .send({ oldPath: "file1.txt", newPath: "file2.txt" });
+      .delete("/api/file/delete")
+      .send([{ path: "file1.txt" }, { path: "file2.txt" }]);
     expect(response.status).toBe(200);
 
     const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("File file1.txt renamed to file2.txt successfully");
-    expect(mockFileService.renameFile).toHaveBeenCalledWith("file1.txt", "file2.txt");
+    expect(parsedResponse.message).toBe("Files deleted successfully");
+    expect(mockFileService.deleteFiles).toHaveBeenCalledWith([
+      { path: "file1.txt" },
+      { path: "file2.txt" },
+    ]);
   });
 
-  test("POST /move should move a file", async () => {
+  test("POST /move should move multiple files", async () => {
     const response = await request(app)
       .post("/api/file/move")
-      .send({ oldPath: "file1.txt", newPath: "new/file1.txt" });
+      .send([
+        { oldPath: "file1.txt", newPath: "new/file1.txt" },
+        { oldPath: "file2.txt", newPath: "new/file2.txt" },
+      ]);
     expect(response.status).toBe(200);
 
     const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("File file1.txt moved to new/file1.txt successfully");
-    expect(mockFileService.moveFile).toHaveBeenCalledWith("file1.txt", "new/file1.txt");
+    expect(parsedResponse.message).toBe("Files moved successfully");
+    expect(mockFileService.moveFiles).toHaveBeenCalledWith([
+      { oldPath: "file1.txt", newPath: "new/file1.txt" },
+      { oldPath: "file2.txt", newPath: "new/file2.txt" },
+    ]);
   });
 
-  test("DELETE /remove should delete a file", async () => {
-    const response = await request(app).delete("/api/file/remove").send({ filePath: "file1.txt" });
+  test("POST /rename should rename multiple files", async () => {
+    const response = await request(app)
+      .post("/api/file/rename")
+      .send([
+        { oldPath: "file1.txt", newPath: "file1_renamed.txt" },
+        { oldPath: "file2.txt", newPath: "file2_renamed.txt" },
+      ]);
     expect(response.status).toBe(200);
 
     const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("File file1.txt deleted successfully");
-    expect(mockFileService.deleteFile).toHaveBeenCalledWith("file1.txt");
+    expect(parsedResponse.message).toBe("Files renamed successfully");
+    expect(mockFileService.renameFiles).toHaveBeenCalledWith([
+      { oldPath: "file1.txt", newPath: "file1_renamed.txt" },
+      { oldPath: "file2.txt", newPath: "file2_renamed.txt" },
+    ]);
   });
 });

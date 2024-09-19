@@ -1,16 +1,27 @@
 import fg from "fast-glob";
 import fs from "fs-extra";
-import type { ListOptions } from "~/models/fs";
+
 import { unwrapErrorMessage } from "~/utils/zodErrors";
+
+import type { ListOptions } from "~/models/fs";
+
+export interface FileOperation {
+  path: string;
+  content?: string;
+}
+
+export interface MoveOperation {
+  oldPath: string;
+  newPath: string;
+}
 
 export interface IFileService {
   listFiles(directory: string, options?: ListOptions): Promise<string[]>;
-  readFile(filePath: string): Promise<string>;
-  createFile(filePath: string, content: string): Promise<void>;
-  deleteFile(filePath: string): Promise<void>;
-  updateFile(filePath: string, content: string): Promise<void>;
-  renameFile(oldPath: string, newPath: string): Promise<void>;
-  moveFile(oldPath: string, newPath: string): Promise<void>;
+  readFiles(files: FileOperation[]): Promise<FileOperation[]>;
+  updateFiles(files: FileOperation[]): Promise<void>;
+  deleteFiles(files: FileOperation[]): Promise<void>;
+  moveFiles(operations: MoveOperation[]): Promise<void>;
+  renameFiles(operations: MoveOperation[]): Promise<void>;
 }
 
 export class FileService implements IFileService {
@@ -39,49 +50,46 @@ export class FileService implements IFileService {
     }
   }
 
-  async readFile(filePath: string): Promise<string> {
+  async readFiles(files: FileOperation[]): Promise<FileOperation[]> {
     try {
-      return fs.readFile(filePath, "utf-8");
+      return await Promise.all(
+        files.map(async (file) => ({
+          path: file.path,
+          content: await fs.readFile(file.path, "utf-8"),
+        })),
+      );
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
   }
 
-  async createFile(filePath: string, content: string): Promise<void> {
+  async updateFiles(files: FileOperation[]): Promise<void> {
     try {
-      await fs.outputFile(filePath, content);
+      await Promise.all(files.map((file) => fs.outputFile(file.path, file.content ?? "")));
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
   }
 
-  async deleteFile(filePath: string): Promise<void> {
+  async deleteFiles(files: FileOperation[]): Promise<void> {
     try {
-      await fs.unlink(filePath);
+      await Promise.all(files.map((file) => fs.unlink(file.path)));
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
   }
 
-  async updateFile(filePath: string, content: string): Promise<void> {
+  async moveFiles(operations: MoveOperation[]): Promise<void> {
     try {
-      await fs.outputFile(filePath, content);
+      await Promise.all(operations.map((op) => fs.move(op.oldPath, op.newPath)));
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }
   }
 
-  async renameFile(oldPath: string, newPath: string): Promise<void> {
+  async renameFiles(operations: MoveOperation[]): Promise<void> {
     try {
-      await fs.rename(oldPath, newPath);
-    } catch (error) {
-      throw new Error(unwrapErrorMessage(error));
-    }
-  }
-
-  async moveFile(oldPath: string, newPath: string): Promise<void> {
-    try {
-      await fs.move(oldPath, newPath);
+      await Promise.all(operations.map((op) => fs.rename(op.oldPath, op.newPath)));
     } catch (error) {
       throw new Error(unwrapErrorMessage(error));
     }

@@ -27,57 +27,63 @@ describe("FileService", () => {
     expect(files).toContain("/test/file2.txt");
   });
 
-  test("readFile should read the file content", async () => {
-    const content = await fileService.readFile("/test/file1.txt");
-    expect(content).toBe("Hello, World!");
+  test("readFiles should read multiple files", async () => {
+    const files = await fileService.readFiles([
+      { path: "/test/file1.txt" },
+      { path: "/test/file2.txt" },
+    ]);
+    expect(files).toEqual([
+      { path: "/test/file1.txt", content: "Hello, World!" },
+      { path: "/test/file2.txt", content: "Hello, Jest!" },
+    ]);
   });
 
-  test("createFile should create a file with content", async () => {
-    await fileService.createFile("/test/newfile.txt", "New file content");
-    const content = await fs.promises.readFile("/test/newfile.txt", "utf-8");
-    expect(content).toBe("New file content");
+  test("updateFiles should update multiple files", async () => {
+    await fileService.updateFiles([
+      { path: "/test/file1.txt", content: "Updated content 1" },
+      { path: "/test/file2.txt", content: "Updated content 2" },
+    ]);
+    const content1 = await fs.readFile("/test/file1.txt", "utf-8");
+    const content2 = await fs.readFile("/test/file2.txt", "utf-8");
+    expect(content1).toBe("Updated content 1");
+    expect(content2).toBe("Updated content 2");
   });
 
-  test("deleteFile should delete the specified file", async () => {
-    await fileService.deleteFile("/test/file1.txt");
-    const exists = await fs.promises
-      .access("/test/file1.txt")
-      .then(() => true)
-      .catch(() => false);
-    expect(exists).toBe(false);
+  test("deleteFiles should delete multiple files", async () => {
+    await fileService.deleteFiles([{ path: "/test/file1.txt" }, { path: "/test/file2.txt" }]);
+    const exists1 = await fs.pathExists("/test/file1.txt");
+    const exists2 = await fs.pathExists("/test/file2.txt");
+    expect(exists1).toBe(false);
+    expect(exists2).toBe(false);
   });
 
-  test("updateFile should update the file content", async () => {
-    await fileService.updateFile("/test/file1.txt", "Updated content");
-    const content = await fs.promises.readFile("/test/file1.txt", "utf-8");
-    expect(content).toBe("Updated content");
+  test("moveFiles should move multiple files", async () => {
+    await fileService.moveFiles([
+      { oldPath: "/test/file1.txt", newPath: "/test/dir/file1.txt" },
+      { oldPath: "/test/file2.txt", newPath: "/test/dir/file2.txt" },
+    ]);
+    const existsOld1 = await fs.pathExists("/test/file1.txt");
+    const existsOld2 = await fs.pathExists("/test/file2.txt");
+    const existsNew1 = await fs.pathExists("/test/dir/file1.txt");
+    const existsNew2 = await fs.pathExists("/test/dir/file2.txt");
+    expect(existsOld1).toBe(false);
+    expect(existsOld2).toBe(false);
+    expect(existsNew1).toBe(true);
+    expect(existsNew2).toBe(true);
   });
 
-  test("renameFile should rename the file", async () => {
-    await fileService.renameFile("/test/file1.txt", "/test/file3.txt");
-    const existsOld = await fs.promises
-      .access("/test/file1.txt")
-      .then(() => true)
-      .catch(() => false);
-    const existsNew = await fs.promises
-      .access("/test/file3.txt")
-      .then(() => true)
-      .catch(() => false);
-    expect(existsOld).toBe(false);
-    expect(existsNew).toBe(true);
-  });
-
-  test("moveFile should move the file", async () => {
-    await fileService.moveFile("/test/file1.txt", "/test/dir/file1.txt");
-    const existsOld = await fs.promises
-      .access("/test/file1.txt")
-      .then(() => true)
-      .catch(() => false);
-    const existsNew = await fs.promises
-      .access("/test/dir/file1.txt")
-      .then(() => true)
-      .catch(() => false);
-    expect(existsOld).toBe(false);
-    expect(existsNew).toBe(true);
+  test("renameFiles should rename multiple files", async () => {
+    await fileService.renameFiles([
+      { oldPath: "/test/file1.txt", newPath: "/test/file1_renamed.txt" },
+      { oldPath: "/test/file2.txt", newPath: "/test/file2_renamed.txt" },
+    ]);
+    const existsOld1 = await fs.pathExists("/test/file1.txt");
+    const existsOld2 = await fs.pathExists("/test/file2.txt");
+    const existsNew1 = await fs.pathExists("/test/file1_renamed.txt");
+    const existsNew2 = await fs.pathExists("/test/file2_renamed.txt");
+    expect(existsOld1).toBe(false);
+    expect(existsOld2).toBe(false);
+    expect(existsNew1).toBe(true);
+    expect(existsNew2).toBe(true);
   });
 });
