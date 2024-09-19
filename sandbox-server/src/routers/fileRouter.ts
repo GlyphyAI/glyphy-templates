@@ -9,12 +9,12 @@ const filesSchema = listOptionsSchema.extend({
   directory: z.string(),
 });
 
-const fileSchema = z.object({
-  filePath: z.string(),
+const fileOperationSchema = z.object({
+  path: z.string(),
   content: z.string().optional(),
 });
 
-const renameMoveSchema = z.object({
+const moveOperationSchema = z.object({
   oldPath: z.string(),
   newPath: z.string(),
 });
@@ -46,57 +46,48 @@ export default class FileRouter {
       }),
     );
 
-    this.router.get(
+    this.router.post(
       "/read",
       asyncHandler(async (req, res) => {
-        const { filePath } = fileSchema.parse(req.query);
-        const content = await this.fileService.readFile(filePath);
-        res.json({ content });
-      }),
-    );
-
-    this.router.post(
-      "/create",
-      asyncHandler(async (req, res) => {
-        const { filePath, content } = fileSchema.parse(req.body);
-        await this.fileService.createFile(filePath, content ?? "");
-        res.json({ message: `File ${filePath} created successfully` });
+        const files = z.array(fileOperationSchema).parse(req.body);
+        const contents = await this.fileService.readFiles(files);
+        res.json(contents);
       }),
     );
 
     this.router.put(
       "/update",
       asyncHandler(async (req, res) => {
-        const { filePath, content } = fileSchema.parse(req.body);
-        await this.fileService.updateFile(filePath, content ?? "");
-        res.json({ message: `File ${filePath} updated successfully` });
+        const files = z.array(fileOperationSchema).parse(req.body);
+        await this.fileService.updateFiles(files);
+        res.json({ message: "Files updated successfully" });
       }),
     );
 
-    this.router.post(
-      "/rename",
+    this.router.delete(
+      "/delete",
       asyncHandler(async (req, res) => {
-        const { oldPath, newPath } = renameMoveSchema.parse(req.body);
-        await this.fileService.renameFile(oldPath, newPath);
-        res.json({ message: `File ${oldPath} renamed to ${newPath} successfully` });
+        const files = z.array(fileOperationSchema).parse(req.body);
+        await this.fileService.deleteFiles(files);
+        res.json({ message: "Files deleted successfully" });
       }),
     );
 
     this.router.post(
       "/move",
       asyncHandler(async (req, res) => {
-        const { oldPath, newPath } = renameMoveSchema.parse(req.body);
-        await this.fileService.moveFile(oldPath, newPath);
-        res.json({ message: `File ${oldPath} moved to ${newPath} successfully` });
+        const operations = z.array(moveOperationSchema).parse(req.body);
+        await this.fileService.moveFiles(operations);
+        res.json({ message: "Files moved successfully" });
       }),
     );
 
-    this.router.delete(
-      "/remove",
+    this.router.post(
+      "/rename",
       asyncHandler(async (req, res) => {
-        const { filePath } = fileSchema.parse(req.body);
-        await this.fileService.deleteFile(filePath);
-        res.json({ message: `File ${filePath} deleted successfully` });
+        const operations = z.array(moveOperationSchema).parse(req.body);
+        await this.fileService.renameFiles(operations);
+        res.json({ message: "Files renamed successfully" });
       }),
     );
   }
