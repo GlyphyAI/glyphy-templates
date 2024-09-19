@@ -40,10 +40,17 @@ export class AppRoutes {
         broadcaster: app.broadcaster,
       });
 
-      if (this.config.initAppOnBoot) {
-        const commandService = await serviceContainer.getCommandService();
-        await installDependencies(this.config.processRuntime, commandService);
-        await appService.init({ wait: true, timeout: 60000 });
+      if (this.config.appStartOnBoot) {
+        try {
+          const commandService = await serviceContainer.getCommandService();
+          await installDependencies(this.config.appRuntime, commandService);
+          await appService.init({
+            wait: this.config.appStartAwait,
+            timeout: this.config.appStartTimeout,
+          });
+        } catch (error) {
+          console.error(error);
+        }
       }
 
       const appRouter = new AppRouter(appService);
