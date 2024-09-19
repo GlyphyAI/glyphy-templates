@@ -104,13 +104,11 @@ describe("ProcessController", () => {
     const result = await process.wait();
     result.match(
       (output) => {
-        fail(
-          `Expected error due to process being killed, but got success: ${JSON.stringify(output)}`,
-        );
+        expect(output.finished).toBe(true);
+        expect(output.exitCode).not.toBe(0);
       },
       (error) => {
-        expect(error.type).toBe("exit");
-        expect((error as ExitCodeError).exitCode).toBeUndefined();
+        fail(`Killed process should not be reported as errors, but got: ${JSON.stringify(error)}`);
       },
     );
   });

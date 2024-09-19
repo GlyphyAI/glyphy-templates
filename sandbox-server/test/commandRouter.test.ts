@@ -18,7 +18,7 @@ describe("CommandRouter", () => {
     app = express();
     app.use(express.json());
     const commandRouter = new CommandRouter(mockCommandService);
-    app.use("/api/command", commandRouter.router);
+    app.use("/api/execute", commandRouter.router);
   });
 
   test("POST / should execute a command", async () => {
@@ -26,7 +26,7 @@ describe("CommandRouter", () => {
       output: "Command executed successfully",
     } as unknown as ProcessOutput);
 
-    const response = await request(app).post("/api/command").send({ command: "test command" });
+    const response = await request(app).post("/api/execute").send({ command: "test command" });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ output: "Command executed successfully" });
@@ -34,14 +34,14 @@ describe("CommandRouter", () => {
   });
 
   test("POST / should return 400 for empty command", async () => {
-    const response = await request(app).post("/api/command").send({ command: "" });
+    const response = await request(app).post("/api/execute").send({ command: "" });
 
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty("error");
   });
 
   test("POST / should return 400 for missing command", async () => {
-    const response = await request(app).post("/api/command").send({});
+    const response = await request(app).post("/api/execute").send({});
 
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty("error");
@@ -50,7 +50,7 @@ describe("CommandRouter", () => {
   test("POST / should handle errors from command execution", async () => {
     mockCommandService.execute.mockRejectedValue(new Error("Command execution failed"));
 
-    const response = await request(app).post("/api/command").send({ command: "failing command" });
+    const response = await request(app).post("/api/execute").send({ command: "failing command" });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: "Command execution failed" });
