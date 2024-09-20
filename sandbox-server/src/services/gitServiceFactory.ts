@@ -1,6 +1,7 @@
 import simpleGit from "simple-git";
+
+import { GitService, type IGitService } from "~/services/gitService";
 import { unwrapErrorMessage } from "~/utils/zodErrors";
-import { GitService, type IGitService } from "./gitService";
 
 export async function createGitService(
   repoPath: string,
