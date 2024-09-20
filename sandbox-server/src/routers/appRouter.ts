@@ -1,7 +1,14 @@
 import { Router, json as jsonParser } from "express";
+import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
+import { coerceBoolean } from "~/utils/zod";
 
 import type { IAppService } from "~/services/appService";
+
+const waitOptionsSchema = z.object({
+  wait: coerceBoolean.optional(),
+  timeout: z.coerce.number().optional(),
+});
 
 export default class AppRouter {
   public readonly router: Router;
@@ -15,7 +22,7 @@ export default class AppRouter {
   private routes() {
     this.router.get(
       "/status",
-      asyncHandler(async (req, res) => {
+      asyncHandler(async (_req, res) => {
         const status = await this.appService.status();
         res.json({ status });
       }),
@@ -24,57 +31,30 @@ export default class AppRouter {
     this.router.post(
       "/start",
       asyncHandler(async (req, res) => {
-        try {
-          const wait = req.query.wait === "true";
-          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
-          const output = await this.appService.start({ wait, timeout });
-          const message = wait ? "App started and ready" : "App started";
-          res.json({ message, output });
-        } catch (error) {
-          if (error instanceof Error) {
-            res.status(500).json({ message: "App failed to start", error: error.message });
-          } else {
-            res.status(500).json({ message: "App failed to start", error });
-          }
-        }
+        const options = waitOptionsSchema.parse(req.query);
+        const output = await this.appService.start(options);
+        const message = options.wait ? "App started and ready" : "App started";
+        res.json({ message, output });
       }),
     );
 
     this.router.post(
       "/stop",
       asyncHandler(async (req, res) => {
-        try {
-          const wait = req.query.wait === "true";
-          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
-          const output = await this.appService.stop({ wait, timeout });
-          const message = wait ? "App stopped" : "App stopping";
-          res.json({ message, output });
-        } catch (error) {
-          if (error instanceof Error) {
-            res.status(500).json({ message: "App failed to stop", error: error.message });
-          } else {
-            res.status(500).json({ message: "App failed to stop", error });
-          }
-        }
+        const options = waitOptionsSchema.parse(req.query);
+        const output = await this.appService.stop(options);
+        const message = options.wait ? "App stopped" : "App stopping";
+        res.json({ message, output });
       }),
     );
 
     this.router.post(
       "/reload",
       asyncHandler(async (req, res) => {
-        try {
-          const wait = req.query.wait === "true";
-          const timeout = req.query.timeout ? Number(req.query.timeout) : 30000;
-          const output = await this.appService.reload({ wait, timeout });
-          const message = wait ? "App reloaded and ready" : "App reloaded";
-          res.json({ message, output });
-        } catch (error) {
-          if (error instanceof Error) {
-            res.status(500).json({ message: "App failed to reload", error: error.message });
-          } else {
-            res.status(500).json({ message: "App failed to reload", error });
-          }
-        }
+        const options = waitOptionsSchema.parse(req.query);
+        const output = await this.appService.reload(options);
+        const message = options.wait ? "App reloaded and ready" : "App reloaded";
+        res.json({ message, output });
       }),
     );
   }
