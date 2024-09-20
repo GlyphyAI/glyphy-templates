@@ -6,7 +6,7 @@ import { asyncHandler } from "~/utils/asyncHandler";
 import type { IFileService } from "~/services/fileService";
 
 const filesSchema = listOptionsSchema.extend({
-  directory: z.string(),
+  path: z.string(),
 });
 
 const fileOperationSchema = z.object({
@@ -33,12 +33,12 @@ export default class FileRouter {
       "/list",
       asyncHandler(async (req, res) => {
         const {
-          directory,
+          path,
           includePatterns: globs,
           excludePatterns: ignore,
           recursive,
         } = filesSchema.parse(req.query);
-        const files = await this.fileService.listFiles(directory, {
+        const files = await this.fileService.listFiles(path, {
           includePatterns: globs,
           excludePatterns: ignore,
           recursive,
