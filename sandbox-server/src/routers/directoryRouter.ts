@@ -6,7 +6,7 @@ import { asyncHandler } from "~/utils/asyncHandler";
 import type { IDirectoryService } from "~/services/directoryService";
 
 const dirsSchema = listOptionsSchema.extend({
-  directory: z.string(),
+  path: z.string(),
 });
 
 const renameMoveSchema = z.object({
@@ -15,7 +15,7 @@ const renameMoveSchema = z.object({
 });
 
 const directoryPathSchema = z.object({
-  directoryPath: z.string(),
+  path: z.string(),
 });
 
 export default class DirectoryRouter {
@@ -31,15 +31,10 @@ export default class DirectoryRouter {
     this.router.get(
       "/list",
       asyncHandler(async (req, res) => {
-        const {
-          directory,
-          includePatterns: globs,
-          excludePatterns: ignore,
-          recursive,
-        } = dirsSchema.parse(req.query);
-        const directories = await this.directoryService.listDirectories(directory, {
-          includePatterns: globs,
-          excludePatterns: ignore,
+        const { path, includePatterns, excludePatterns, recursive } = dirsSchema.parse(req.query);
+        const directories = await this.directoryService.listDirectories(path, {
+          includePatterns,
+          excludePatterns,
           recursive,
         });
 
@@ -50,9 +45,9 @@ export default class DirectoryRouter {
     this.router.post(
       "/create",
       asyncHandler(async (req, res) => {
-        const { directoryPath } = directoryPathSchema.parse(req.body);
-        await this.directoryService.createDirectory(directoryPath);
-        res.json({ message: `Directory ${directoryPath} created successfully` });
+        const { path } = directoryPathSchema.parse(req.body);
+        await this.directoryService.createDirectory(path);
+        res.json({ message: `Directory ${path} created successfully` });
       }),
     );
 
@@ -75,11 +70,11 @@ export default class DirectoryRouter {
     );
 
     this.router.delete(
-      "/remove",
+      "/delete",
       asyncHandler(async (req, res) => {
-        const { directoryPath } = directoryPathSchema.parse(req.body);
-        await this.directoryService.deleteDirectory(directoryPath);
-        res.json({ message: `Directory ${directoryPath} deleted successfully` });
+        const { path } = directoryPathSchema.parse(req.body);
+        await this.directoryService.deleteDirectory(path);
+        res.json({ message: `Directory ${path} deleted successfully` });
       }),
     );
   }
