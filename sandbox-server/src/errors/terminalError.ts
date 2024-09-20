@@ -1,4 +1,4 @@
-import { unwrapErrorMessage } from "~/utils/zodErrors";
+import { unwrapErrorMessage } from "~/utils/errors";
 
 import type { ServiceError } from "~/errors/serviceError";
 
