@@ -1,13 +1,15 @@
 import dotenv from "dotenv";
+
 import { z } from "zod";
+import { coerceBoolean } from "~/utils/zod";
 
 const configSchema = z.object({
-  port: z.preprocess((val) => parseInt(val as string, 10), z.number().min(1).max(65535)),
+  port: z.coerce.number().int().min(1).max(65535),
   workingDirectory: z.string().min(1),
   templatePath: z.string().optional(),
-  appStartOnBoot: z.preprocess((val) => val === "true", z.boolean().default(true)),
-  appStartTimeout: z.preprocess((val) => parseInt(val as string), z.number().min(1).max(600000)),
-  appStartAwait: z.preprocess((val) => val === "true", z.boolean().default(true)),
+  appStartOnBoot: coerceBoolean,
+  appStartTimeout: z.coerce.number().min(1).max(600000),
+  appStartAwait: coerceBoolean,
   appRuntime: z.enum(["flutter", "dart"]),
 });
 
