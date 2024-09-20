@@ -1,3 +1,4 @@
+import { AppError } from "~/errors/appError";
 import { parseFlutterEvents } from "~/utils/parser";
 import { ProcessController } from "~/utils/process";
 import { BufferedStream, type IBufferedStream } from "~/utils/stream";
@@ -55,200 +56,221 @@ export class AppService implements IAppService {
   }
 
   async status(): Promise<AppStatus> {
-    if (!this.appProcess) {
-      return "idle";
-    }
+    try {
+      if (!this.appProcess) {
+        return "idle";
+      }
 
-    return this.appProcess.running ? "running" : "stopped";
+      return this.appProcess.running ? "running" : "stopped";
+    } catch (error) {
+      throw AppError.fromError(error, {
+        defaultErrorCode: "APP_STATUS_ERROR",
+        defaultErrorMessage: "Failed to get app status",
+      });
+    }
   }
 
   async init(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess) {
-      return await this.start(options);
-    }
+    try {
+      if (!this.appProcess) {
+        return await this.start(options);
+      }
 
-    return this.appProcess.output;
+      return this.appProcess.output;
+    } catch (error) {
+      throw AppError.fromError(error, {
+        defaultErrorCode: "APP_INIT_ERROR",
+        defaultErrorMessage: "Failed to initialize app",
+        additionalDetails: { options },
+      });
+    }
   }
 
   async start(options?: WaitOptions): Promise<ProcessOutput> {
-    if (this.appProcess?.running) {
-      throw new Error("Another app is already running");
-    }
-
-    if (!this.runCommand) {
-      throw new Error("No run command provided");
-    }
-
-    const stdoutHandler = (data: Buffer) => {
-      console.log("stdout:", data.toString());
-      const message = data.toString();
-      const flutterEvents = parseFlutterEvents(message);
-      if (!flutterEvents) {
-        this.broadcaster.broadcast({
-          event: "app:info",
-          params: { message },
-        });
-
-        return;
+    try {
+      if (this.appProcess?.running) {
+        throw new AppError(400, "APP_ALREADY_RUNNING", "Another app is already running", {});
       }
 
-      for (const event of flutterEvents) {
-        if (event.params && typeof event.params === "object" && "appId" in event.params) {
-          this.appId = event.params.appId as string;
+      if (!this.runCommand) {
+        throw new AppError(400, "NO_RUN_COMMAND", "No run command provided", {});
+      }
+
+      const stdoutHandler = (data: Buffer) => {
+        console.log("stdout:", data.toString());
+        const message = data.toString();
+        const flutterEvents = parseFlutterEvents(message);
+        if (!flutterEvents) {
+          this.broadcaster.broadcast({
+            event: "app:info",
+            params: { message },
+          });
+
+          return;
         }
 
-        this.broadcaster.broadcast({
-          event: "app:info",
-          params: {
-            event: event.event,
-            ...event.params,
-          },
-        });
-      }
-    };
-
-    const stderrHandler = (data: Buffer) => {
-      console.log("stderr:", data.toString());
-      this.stderrBufferedStream.add(data.toString());
-    };
-
-    const exitHandler = (code: number | undefined) => {
-      console.log(`Process exited with code ${code}`);
-      if (code === 0) {
-        this.broadcaster.broadcast({
-          event: "app:exit",
-          params: { code, error: null },
-        });
-      } else {
-        this.broadcaster.broadcast({
-          event: "app:exit",
-          params: { code, error: this.appProcess?.output.stderr },
-        });
-      }
-    };
-
-    this.appProcess = await this.processController.start({
-      cmd: this.runCommand,
-      cwd: this.workingDirectory,
-      onStdout: stdoutHandler,
-      onStderr: stderrHandler,
-      onExit: exitHandler,
-    });
-
-    if (options?.wait) {
-      const result = await this.appProcess.waitForEvent({
-        timeout: options?.timeout,
-        condition: (payload: string) => {
-          const flutterEvents = parseFlutterEvents(payload);
-          if (!flutterEvents) {
-            return false;
+        for (const event of flutterEvents) {
+          if (event.params && typeof event.params === "object" && "appId" in event.params) {
+            this.appId = event.params.appId as string;
           }
 
-          return flutterEvents.some((event) => event.event === "app.started");
-        },
+          this.broadcaster.broadcast({
+            event: "app:info",
+            params: {
+              event: event.event,
+              ...event.params,
+            },
+          });
+        }
+      };
+
+      const stderrHandler = (data: Buffer) => {
+        console.log("stderr:", data.toString());
+        this.stderrBufferedStream.add(data.toString());
+      };
+
+      const exitHandler = (code: number | undefined) => {
+        console.log(`Process exited with code ${code}`);
+        if (code === 0) {
+          this.broadcaster.broadcast({
+            event: "app:exit",
+            params: { code, error: null },
+          });
+        } else {
+          this.broadcaster.broadcast({
+            event: "app:exit",
+            params: { code, error: this.appProcess?.output.stderr },
+          });
+        }
+      };
+
+      this.appProcess = await this.processController.start({
+        cmd: this.runCommand,
+        cwd: this.workingDirectory,
+        onStdout: stdoutHandler,
+        onStderr: stderrHandler,
+        onExit: exitHandler,
       });
 
-      if (result.isErr()) {
-        await this.killAppProcess();
-        if (result.error.type === "timeout") {
-          throw new Error(`Timeout waiting for app to start after ${options.timeout}ms`);
-        } else if (result.error.type === "exit") {
-          throw new Error(`Process exited with code ${result.error.exitCode}`);
-        } else {
-          throw new Error("Unknown error waiting for app to start");
+      if (options?.wait) {
+        const result = await this.appProcess.waitForEvent({
+          timeout: options?.timeout,
+          condition: (payload: string) => {
+            const flutterEvents = parseFlutterEvents(payload);
+            if (!flutterEvents) {
+              return false;
+            }
+
+            return flutterEvents.some((event) => event.event === "app.started");
+          },
+        });
+
+        if (result.isErr()) {
+          await this.killAppProcess();
+          throw result.error;
         }
       }
-    }
 
-    return this.appProcess.output;
+      return this.appProcess.output;
+    } catch (error) {
+      throw AppError.fromError(error, {
+        defaultErrorCode: "APP_START_ERROR",
+        defaultErrorMessage: "Failed to start app",
+        additionalDetails: { options },
+      });
+    }
   }
 
   async reload(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess?.running) {
-      throw new Error("App is not running");
-    }
+    try {
+      if (!this.appProcess?.running) {
+        throw new AppError(400, "APP_NOT_RUNNING", "App is not running", {});
+      }
 
-    const output = this.appProcess.output;
-    const requestId = this.requestId++;
-    const message = JSON.stringify([
-      {
-        id: requestId,
-        method: "app.restart",
-        params: {
-          appId: this.appId,
-          fullRestart: true,
-          pause: false,
-          reason: "manual",
+      const output = this.appProcess.output;
+      const requestId = this.requestId++;
+      const message = JSON.stringify([
+        {
+          id: requestId,
+          method: "app.restart",
+          params: {
+            appId: this.appId,
+            fullRestart: true,
+            pause: false,
+            reason: "manual",
+          },
         },
-      },
-    ]);
+      ]);
 
-    this.appProcess.writeInput(message + "\n");
+      this.appProcess.writeInput(message + "\n");
 
-    if (options?.wait) {
-      const result = await this.appProcess.waitForEvent({
-        timeout: options?.timeout,
-        condition: (payload: string) => {
-          const flutterEvents = parseFlutterEvents(payload);
-          if (!flutterEvents) {
-            return false;
-          }
+      if (options?.wait) {
+        const result = await this.appProcess.waitForEvent({
+          timeout: options?.timeout,
+          condition: (payload: string) => {
+            const flutterEvents = parseFlutterEvents(payload);
+            if (!flutterEvents) {
+              return false;
+            }
 
-          return flutterEvents.some(
-            (event) => event.event === "app.progress" && event.params.finished === true,
-          );
-        },
-      });
+            return flutterEvents.some(
+              (event) => event.event === "app.progress" && event.params.finished === true,
+            );
+          },
+        });
 
-      if (result.isErr()) {
-        await this.killAppProcess();
-        if (result.error.type === "timeout") {
-          throw new Error(`Timeout waiting for app to reload after ${options.timeout}ms`);
-        } else if (result.error.type === "exit") {
-          throw new Error(`Process exited with code ${result.error.exitCode}`);
-        } else {
-          throw new Error("Unknown error waiting for app to reload");
+        if (result.isErr()) {
+          await this.killAppProcess();
+          throw result.error;
         }
       }
-    }
 
-    return output;
+      return output;
+    } catch (error) {
+      throw AppError.fromError(error, {
+        defaultErrorCode: "APP_RELOAD_ERROR",
+        defaultErrorMessage: "Failed to reload app",
+        additionalDetails: { options },
+      });
+    }
   }
 
   async stop(options?: WaitOptions): Promise<ProcessOutput> {
-    if (!this.appProcess?.running) {
-      throw new Error("No app is running");
-    }
-
-    const output = this.appProcess.output;
-    const requestId = this.requestId++;
-    const message = JSON.stringify([
-      {
-        id: requestId,
-        method: "app.stop",
-        params: { appId: this.appId },
-      },
-    ]);
-
-    this.appProcess.writeInput(message + "\n");
-
-    if (options?.wait) {
-      const result = await this.appProcess.wait(options?.timeout);
-      if (result.isErr()) {
-        await this.killAppProcess();
-        if (result.error.type === "timeout") {
-          throw new Error(`App did not stop within ${options?.timeout}ms`);
-        } else if (result.error.type === "exit") {
-          throw new Error(`App failed to stop with exit code ${result.error.exitCode}`);
-        } else {
-          throw new Error("Unknown error waiting for app to stop");
-        }
+    try {
+      if (!this.appProcess?.running) {
+        throw new AppError(400, "APP_NOT_RUNNING", "No app is running", {});
       }
-    } else {
-      await this.killAppProcess();
-    }
 
-    return output;
+      const output = this.appProcess.output;
+      const requestId = this.requestId++;
+      const message = JSON.stringify([
+        {
+          id: requestId,
+          method: "app.stop",
+          params: { appId: this.appId },
+        },
+      ]);
+
+      this.appProcess.writeInput(message + "\n");
+
+      if (options?.wait) {
+        const result = await this.appProcess.wait(options?.timeout);
+        if (result.isErr()) {
+          await this.killAppProcess();
+          throw result.error;
+        }
+      } else {
+        await this.killAppProcess();
+      }
+
+      return output;
+    } catch (error) {
+      throw AppError.fromError(error, {
+        defaultErrorCode: "APP_STOP_ERROR",
+        defaultErrorMessage: "Failed to stop app",
+        additionalDetails: { options },
+      });
+    }
   }
 
   private async killAppProcess(): Promise<void> {
