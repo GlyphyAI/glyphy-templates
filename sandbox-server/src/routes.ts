@@ -63,7 +63,7 @@ export class AppRoutes {
       return fileRouter.router;
     });
 
-    await this.appRegistry.registerRouter("/api/directories", async () => {
+    await this.appRegistry.registerRouter("/api/dirs", async () => {
       const directoryService = await serviceContainer.getDirectoryService();
       const directoryRouter = new DirectoryRouter(directoryService);
       return directoryRouter.router;
