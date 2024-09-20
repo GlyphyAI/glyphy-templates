@@ -5,6 +5,7 @@ import request from "supertest";
 import DirectoryRouter from "~/routers/directoryRouter";
 
 import { z } from "zod";
+import { DirectoryError } from "~/errors";
 
 import type { IDirectoryService } from "~/services/directoryService";
 
@@ -34,7 +35,7 @@ describe("DirectoryRouter", () => {
   test("GET /list should list directories", async () => {
     const response = await request(app)
       .get("/api/directory/list")
-      .query({ directory: ".", recursive: true });
+      .query({ path: ".", recursive: true });
     expect(response.status).toBe(200);
 
     const parsedResponse = directoriesResponseSchema.parse(response.body);
@@ -45,7 +46,7 @@ describe("DirectoryRouter", () => {
   test("POST /create should create a directory", async () => {
     const response = await request(app)
       .post("/api/directory/create")
-      .send({ directoryPath: "/test/newdir" });
+      .send({ path: "/test/newdir" });
     expect(response.status).toBe(200);
 
     const parsedResponse = messageResponseSchema.parse(response.body);
@@ -85,14 +86,32 @@ describe("DirectoryRouter", () => {
     );
   });
 
-  test("DELETE /remove should delete a directory", async () => {
-    const response = await request(app)
-      .delete("/api/directory/remove")
-      .send({ directoryPath: "/test/dir1" });
-    expect(response.status).toBe(200);
+  describe("DELETE /delete", () => {
+    test("should delete a directory when it exists", async () => {
+      mockDirectoryService.deleteDirectory.mockResolvedValueOnce(undefined);
 
-    const parsedResponse = messageResponseSchema.parse(response.body);
-    expect(parsedResponse.message).toBe("Directory /test/dir1 deleted successfully");
-    expect(mockDirectoryService.deleteDirectory).toHaveBeenCalledWith("/test/dir1");
+      const response = await request(app)
+        .delete("/api/directory/delete")
+        .send({ path: "/test/dir1" });
+
+      expect(response.status).toBe(200);
+      const parsedResponse = messageResponseSchema.parse(response.body);
+      expect(parsedResponse.message).toBe("Directory /test/dir1 deleted successfully");
+      expect(mockDirectoryService.deleteDirectory).toHaveBeenCalledWith("/test/dir1");
+    });
+
+    test("should handle DirectoryError when directory does not exist", async () => {
+      const directoryError = new DirectoryError(500, "DIRECTORY_NOT_FOUND", "Directory not found", {
+        path: "/test/nonexistent",
+      });
+      mockDirectoryService.deleteDirectory.mockRejectedValueOnce(directoryError);
+
+      const response = await request(app)
+        .delete("/api/directory/delete")
+        .send({ path: "/test/nonexistent" });
+
+      expect(response.status).toBe(500);
+      expect(mockDirectoryService.deleteDirectory).toHaveBeenCalledWith("/test/nonexistent");
+    });
   });
 });

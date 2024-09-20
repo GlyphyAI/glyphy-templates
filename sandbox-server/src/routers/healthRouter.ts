@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { asyncHandler } from "~/utils/asyncHandler";
 
 export default class HealthRouter {
@@ -6,6 +6,7 @@ export default class HealthRouter {
 
   constructor() {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 

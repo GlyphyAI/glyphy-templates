@@ -25,3 +25,15 @@ export type ExitCodeError = {
 };
 
 export type ProcessError = TimeoutError | ExitCodeError;
+
+export function isTimeoutError(error: unknown): error is TimeoutError {
+  return (error as TimeoutError)?.type === "timeout";
+}
+
+export function isExitCodeError(error: unknown): error is ExitCodeError {
+  return (error as ExitCodeError)?.type === "exit";
+}
+
+export function isProcessError(error: unknown): error is ProcessError {
+  return isTimeoutError(error) || isExitCodeError(error);
+}

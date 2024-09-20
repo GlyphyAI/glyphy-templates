@@ -2,16 +2,11 @@ import express from "express";
 
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
+import { useMiddleware } from "~/middleware";
 import { Broadcaster, type IBroadcaster } from "~/utils/broadcaster";
-import { unwrapErrorMessage } from "~/utils/zodErrors";
 
-import type { Application, NextFunction, Request, Response, Router } from "express";
+import type { Application, Router } from "express";
 import type { Promisable } from "~/utils/types";
-
-function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
-  console.error(err.stack);
-  res.status(500).json({ message: unwrapErrorMessage(err) });
-}
 
 export interface IAppRegistry<T> {
   registerRouter(path: string, builder: (app: T) => Promisable<Router>): Promisable<void>;
@@ -28,14 +23,10 @@ export class App implements IAppRegistry<App> {
     this.server = createServer(this.app);
     this.wss = new WebSocketServer({ server: this.server });
     this.broadcaster = new Broadcaster(this.wss);
-
-    this.setupMiddleware();
-    this.setupWebSocket();
   }
 
   private setupMiddleware() {
-    this.app.use(express.json());
-    this.app.use(errorHandler);
+    useMiddleware(this.app);
   }
 
   private setupWebSocket() {
@@ -54,6 +45,8 @@ export class App implements IAppRegistry<App> {
   }
 
   public start(port: number) {
+    this.setupMiddleware();
+    this.setupWebSocket();
     this.server.listen(port, () => {
       console.log(`Server is running on port ${port}`);
     });

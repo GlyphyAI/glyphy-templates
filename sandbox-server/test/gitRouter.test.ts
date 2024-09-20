@@ -73,9 +73,9 @@ describe("GitRouter", () => {
     expect(mockGitService.pull).toHaveBeenCalledWith("origin", "main");
   });
 
-  test("POST /branch/create should create a new branch", async () => {
+  test("POST /branches/create should create a new branch", async () => {
     const response = await request(app)
-      .post("/api/git/branch/create")
+      .post("/api/git/branches/create")
       .send({ branch: "new-branch" });
 
     expect(response.status).toBe(200);
@@ -84,9 +84,9 @@ describe("GitRouter", () => {
     expect(mockGitService.createBranch).toHaveBeenCalledWith("new-branch");
   });
 
-  test("POST /branch/delete should delete a branch", async () => {
+  test("POST /branches/delete should delete a branch", async () => {
     const response = await request(app)
-      .post("/api/git/branch/delete")
+      .post("/api/git/branches/delete")
       .send({ branch: "old-branch" });
 
     expect(response.status).toBe(200);
@@ -95,9 +95,9 @@ describe("GitRouter", () => {
     expect(mockGitService.deleteBranch).toHaveBeenCalledWith("old-branch");
   });
 
-  test("POST /branch/switch should switch to a branch", async () => {
+  test("POST /branches/switch should switch to a branch", async () => {
     const response = await request(app)
-      .post("/api/git/branch/switch")
+      .post("/api/git/branches/switch")
       .send({ branch: "feature-branch" });
 
     expect(response.status).toBe(200);
@@ -106,9 +106,9 @@ describe("GitRouter", () => {
     expect(mockGitService.switchBranch).toHaveBeenCalledWith("feature-branch");
   });
 
-  test("POST /branch/publish should publish a branch", async () => {
+  test("POST /branches/publish should publish a branch", async () => {
     const response = await request(app)
-      .post("/api/git/branch/publish")
+      .post("/api/git/branches/publish")
       .send({ branch: "feature-branch", remote: "origin" });
 
     expect(response.status).toBe(200);
@@ -117,19 +117,19 @@ describe("GitRouter", () => {
     expect(mockGitService.publishBranch).toHaveBeenCalledWith("feature-branch", "origin");
   });
 
-  test("POST /branch/merge should merge branches", async () => {
+  test("POST /branches/merge should merge branches", async () => {
     const response = await request(app)
-      .post("/api/git/branch/merge")
-      .send({ branchToMerge: "feature-branch", targetBranch: "main" });
+      .post("/api/git/branches/merge")
+      .send({ sourceBranch: "feature-branch", destinationBranch: "main" });
 
     expect(response.status).toBe(200);
     const parsedResponse = messageResponseSchema.parse(response.body);
     expect(parsedResponse.message).toBe("Branch feature-branch merged into main successfully");
-    expect(mockGitService.mergeBranches).toHaveBeenCalledWith("feature-branch", "main");
+    expect(mockGitService.mergeBranches).toHaveBeenCalledWith("feature-branch", "main", true);
   });
 
   test("GET /tag should list all tags", async () => {
-    const response = await request(app).get("/api/git/tag");
+    const response = await request(app).get("/api/git/tags");
 
     expect(response.status).toBe(200);
     const parsedResponse = tagsResponseSchema.parse(response.body);
@@ -137,9 +137,9 @@ describe("GitRouter", () => {
     expect(mockGitService.listTags).toHaveBeenCalled();
   });
 
-  test("POST /tag/create should create a new tag", async () => {
+  test("POST /tags/create should create a new tag", async () => {
     const response = await request(app)
-      .post("/api/git/tag/create")
+      .post("/api/git/tags/create")
       .send({ tag: "v1.0", message: "initial release" });
 
     expect(response.status).toBe(200);
@@ -148,8 +148,8 @@ describe("GitRouter", () => {
     expect(mockGitService.tagCommit).toHaveBeenCalledWith("v1.0", "initial release");
   });
 
-  test("POST /tag/switch should switch to a tag", async () => {
-    const response = await request(app).post("/api/git/tag/switch").send({ tag: "v1.0" });
+  test("POST /tags/switch should switch to a tag", async () => {
+    const response = await request(app).post("/api/git/tags/switch").send({ tag: "v1.0" });
 
     expect(response.status).toBe(200);
     const parsedResponse = messageResponseSchema.parse(response.body);

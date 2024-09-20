@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { listOptionsSchema } from "~/models/fs";
 import { asyncHandler } from "~/utils/asyncHandler";
@@ -6,7 +6,7 @@ import { asyncHandler } from "~/utils/asyncHandler";
 import type { IFileService } from "~/services/fileService";
 
 const filesSchema = listOptionsSchema.extend({
-  directory: z.string(),
+  path: z.string(),
 });
 
 const fileOperationSchema = z.object({
@@ -24,6 +24,7 @@ export default class FileRouter {
 
   constructor(private fileService: IFileService) {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 
@@ -32,12 +33,12 @@ export default class FileRouter {
       "/list",
       asyncHandler(async (req, res) => {
         const {
-          directory,
+          path,
           includePatterns: globs,
           excludePatterns: ignore,
           recursive,
         } = filesSchema.parse(req.query);
-        const files = await this.fileService.listFiles(directory, {
+        const files = await this.fileService.listFiles(path, {
           includePatterns: globs,
           excludePatterns: ignore,
           recursive,

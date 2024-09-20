@@ -1,5 +1,5 @@
 import { WebSocket, type WebSocketServer } from "ws";
-import { BufferedStream } from "./stream";
+import { BufferedStream } from "~/utils/stream";
 
 type BroadcastEvent =
   | "app:error" //

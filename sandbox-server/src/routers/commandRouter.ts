@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
@@ -13,24 +13,17 @@ export default class CommandRouter {
 
   constructor(private commandService: ICommandService) {
     this.router = Router();
-    this.initializeRoutes();
+    this.router.use(jsonParser());
+    this.routes();
   }
 
-  private initializeRoutes() {
+  private routes() {
     this.router.post(
       "/",
       asyncHandler(async (req, res) => {
-        try {
-          const { command } = commandSchema.parse(req.body);
-          const result = await this.commandService.execute(command);
-          res.json(result);
-        } catch (error) {
-          if (error instanceof Error) {
-            res.status(400).json({ error: error.message });
-          } else {
-            res.status(400).json({ error });
-          }
-        }
+        const { command } = commandSchema.parse(req.body);
+        const result = await this.commandService.execute(command);
+        res.json(result);
       }),
     );
   }

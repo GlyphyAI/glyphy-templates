@@ -36,9 +36,7 @@ describe("FileRouter", () => {
   });
 
   test("GET /list should list files", async () => {
-    const response = await request(app)
-      .get("/api/file/list")
-      .query({ directory: ".", recursive: true });
+    const response = await request(app).get("/api/file/list").query({ path: ".", recursive: true });
     expect(response.status).toBe(200);
 
     const parsedResponse = filesResponseSchema.parse(response.body);

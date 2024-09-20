@@ -1,6 +1,6 @@
-import { App } from "./app";
-import { config } from "./config";
-import { AppRoutes } from "./routes";
+import { App } from "~/app";
+import { config } from "~/config";
+import { AppRoutes } from "~/routes";
 
 export async function startServer() {
   const app = new App();

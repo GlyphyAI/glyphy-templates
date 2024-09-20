@@ -1,3 +1,5 @@
+import { CommandError } from "~/errors";
+
 import type { IProcessController, ProcessOutput } from "~/utils/process";
 
 interface CommandServiceOptions {
@@ -25,13 +27,12 @@ export class CommandService implements ICommandService {
     });
 
     if (result.isErr()) {
-      if (result.error.type === "timeout") {
-        throw new Error("Command timed out");
-      } else if (result.error.type === "exit") {
-        throw new Error(`Command failed with exit code ${result.error.exitCode}`);
-      } else {
-        throw new Error("Command failed");
-      }
+      throw CommandError.fromError(result.error, {
+        additionalDetails: {
+          command,
+          workingDirectory: this.workingDirectory,
+        },
+      });
     }
 
     return result.value;

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
@@ -23,8 +23,8 @@ const publishSchema = z.object({
 });
 
 const mergeSchema = z.object({
-  branchToMerge: z.string(),
-  targetBranch: z.string(),
+  sourceBranch: z.string(),
+  destinationBranch: z.string(),
 });
 
 const tagSchema = z.object({
@@ -37,6 +37,7 @@ export default class GitRouter {
 
   constructor(private gitService: IGitService) {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 
@@ -53,7 +54,7 @@ export default class GitRouter {
     this.router.post(
       "/push",
       asyncHandler(async (req, res) => {
-        const { remote, branch } = pushSchema.parse(req.body);
+        const { branch, remote } = pushSchema.parse(req.body);
         await this.gitService.push(remote, branch);
         res.json({ message: "Push successful" });
       }),
@@ -62,14 +63,14 @@ export default class GitRouter {
     this.router.post(
       "/pull",
       asyncHandler(async (req, res) => {
-        const { remote, branch } = pushSchema.parse(req.body);
+        const { branch, remote } = pushSchema.parse(req.body);
         await this.gitService.pull(remote, branch);
         res.json({ message: "Pull successful" });
       }),
     );
 
     this.router.post(
-      "/branch/create",
+      "/branches/create",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.createBranch(branch);
@@ -78,7 +79,7 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/branch/delete",
+      "/branches/delete",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.deleteBranch(branch);
@@ -87,7 +88,7 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/branch/switch",
+      "/branches/switch",
       asyncHandler(async (req, res) => {
         const { branch } = branchSchema.parse(req.body);
         await this.gitService.switchBranch(branch);
@@ -96,7 +97,7 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/branch/publish",
+      "/branches/publish",
       asyncHandler(async (req, res) => {
         const { branch, remote } = publishSchema.parse(req.body);
         await this.gitService.publishBranch(branch, remote);
@@ -105,16 +106,18 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/branch/merge",
+      "/branches/merge",
       asyncHandler(async (req, res) => {
-        const { branchToMerge, targetBranch } = mergeSchema.parse(req.body);
-        await this.gitService.mergeBranches(branchToMerge, targetBranch);
-        res.json({ message: `Branch ${branchToMerge} merged into ${targetBranch} successfully` });
+        const { sourceBranch, destinationBranch } = mergeSchema.parse(req.body);
+        await this.gitService.mergeBranches(sourceBranch, destinationBranch, true);
+        res.json({
+          message: `Branch ${sourceBranch} merged into ${destinationBranch} successfully`,
+        });
       }),
     );
 
     this.router.get(
-      "/tag",
+      "/tags",
       asyncHandler(async (req, res) => {
         const tags = await this.gitService.listTags();
         res.json({ tags });
@@ -122,7 +125,7 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/tag/create",
+      "/tags/create",
       asyncHandler(async (req, res) => {
         const { tag, message } = tagSchema.parse(req.body);
         await this.gitService.tagCommit(tag, message);
@@ -131,7 +134,7 @@ export default class GitRouter {
     );
 
     this.router.post(
-      "/tag/switch",
+      "/tags/switch",
       asyncHandler(async (req, res) => {
         const { tag } = z.object({ tag: z.string() }).parse(req.body);
         await this.gitService.switchTag(tag);
