@@ -27,6 +27,7 @@ const mockSimpleGit = {
   merge: jest.fn(),
   tags: jest.fn(),
   addAnnotatedTag: jest.fn(),
+  revparse: jest.fn(),
 } as unknown as jest.Mocked<SimpleGit>;
 
 describe("GitService", () => {
@@ -101,14 +102,18 @@ describe("GitService", () => {
 
     await gitService.publishBranch("feature-branch", "origin");
 
-    expect(mockSimpleGit.push).toHaveBeenCalledWith("origin", "feature-branch");
+    expect(mockSimpleGit.push).toHaveBeenCalledWith([
+      "-u",
+      "origin",
+      "feature-branch:feature-branch",
+    ]);
   });
 
   test("mergeBranches should merge branches", async () => {
     mockSimpleGit.checkout.mockResolvedValueOnce({} as unknown as string);
     mockSimpleGit.merge.mockResolvedValueOnce({} as MergeResult);
 
-    await gitService.mergeBranches("feature-branch", "main");
+    await gitService.mergeBranches("feature-branch", "main", true);
 
     expect(mockSimpleGit.checkout).toHaveBeenCalledWith("main");
     expect(mockSimpleGit.merge).toHaveBeenCalledWith(["feature-branch"]);
