@@ -1,17 +1,17 @@
-import AppRouter from "./routers/appRouter";
-import CommandRouter from "./routers/commandRouter";
-import DirectoryRouter from "./routers/directoryRouter";
-import FileRouter from "./routers/fileRouter";
-import GitRouter from "./routers/gitRouter";
-import HealthRouter from "./routers/healthRouter";
-import TerminalRouter from "./routers/terminalRouter";
+import AppRouter from "~/routers/appRouter";
+import CommandRouter from "~/routers/commandRouter";
+import DirectoryRouter from "~/routers/directoryRouter";
+import FileRouter from "~/routers/fileRouter";
+import GitRouter from "~/routers/gitRouter";
+import HealthRouter from "~/routers/healthRouter";
+import TerminalRouter from "~/routers/terminalRouter";
 
-import { ServiceContainer } from "./services/serviceContainer";
-import { loadTemplate } from "./utils/loadTemplate";
+import { loadTemplate } from "~/utils/loadTemplate";
+import { ServiceContainer } from "~/utils/serviceContainer";
 
-import type { App, IAppRegistry } from "./app";
-import type { Config } from "./config";
-import type { ICommandService } from "./services/commandService";
+import type { App, IAppRegistry } from "~/app";
+import type { Config } from "~/config";
+import type { ICommandService } from "~/services/commandService";
 
 export class AppRoutes {
   constructor(
