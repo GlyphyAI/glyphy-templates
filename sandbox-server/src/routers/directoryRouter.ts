@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { listOptionsSchema } from "~/models/fs";
 import { asyncHandler } from "~/utils/asyncHandler";
@@ -23,6 +23,7 @@ export default class DirectoryRouter {
 
   constructor(private directoryService: IDirectoryService) {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 

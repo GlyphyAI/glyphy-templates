@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
@@ -27,6 +27,7 @@ export default class TerminalRouter {
     private broadcaster: IBroadcaster,
   ) {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 

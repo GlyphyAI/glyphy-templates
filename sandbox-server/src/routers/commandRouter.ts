@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
@@ -13,10 +13,11 @@ export default class CommandRouter {
 
   constructor(private commandService: ICommandService) {
     this.router = Router();
-    this.initializeRoutes();
+    this.router.use(jsonParser());
+    this.routes();
   }
 
-  private initializeRoutes() {
+  private routes() {
     this.router.post(
       "/",
       asyncHandler(async (req, res) => {

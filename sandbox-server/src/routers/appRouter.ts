@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { asyncHandler } from "~/utils/asyncHandler";
 
 import type { IAppService } from "~/services/appService";
@@ -8,10 +8,11 @@ export default class AppRouter {
 
   constructor(private appService: IAppService) {
     this.router = Router();
-    this.setupRoutes();
+    this.router.use(jsonParser());
+    this.routes();
   }
 
-  private setupRoutes() {
+  private routes() {
     this.router.get(
       "/status",
       asyncHandler(async (req, res) => {

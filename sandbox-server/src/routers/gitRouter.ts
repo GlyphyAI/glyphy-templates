@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json as jsonParser } from "express";
 import { z } from "zod";
 import { asyncHandler } from "~/utils/asyncHandler";
 
@@ -37,6 +37,7 @@ export default class GitRouter {
 
   constructor(private gitService: IGitService) {
     this.router = Router();
+    this.router.use(jsonParser());
     this.routes();
   }
 
