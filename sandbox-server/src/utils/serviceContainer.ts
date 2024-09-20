@@ -4,8 +4,8 @@ import { AppService, type IAppService } from "~/services/appService";
 import { CommandService, type ICommandService } from "~/services/commandService";
 import { DirectoryService, type IDirectoryService } from "~/services/directoryService";
 import { FileService, type IFileService } from "~/services/fileService";
-import { createGitService } from "~/services/gitServiceFactory";
 import { type ITerminalService, TerminalService } from "~/services/terminalService";
+import { createGitService } from "~/utils/gitServiceFactory";
 import { ProcessController } from "~/utils/process";
 import { BufferedStream } from "~/utils/stream";
 
