@@ -21,17 +21,9 @@ export default class CommandRouter {
     this.router.post(
       "/",
       asyncHandler(async (req, res) => {
-        try {
-          const { command } = commandSchema.parse(req.body);
-          const result = await this.commandService.execute(command);
-          res.json(result);
-        } catch (error) {
-          if (error instanceof Error) {
-            res.status(400).json({ error: error.message });
-          } else {
-            res.status(400).json({ error });
-          }
-        }
+        const { command } = commandSchema.parse(req.body);
+        const result = await this.commandService.execute(command);
+        res.json(result);
       }),
     );
   }
