@@ -3,7 +3,7 @@
     "id": "GlyphyAI-flutter",
     "title": "Flutter",
     "description": "Kickstart your app development with this Flutter template!",
-    "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/flutter/.glyphy/icon.png",
+    "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/sandbox-templates/flutter/.glyphy/icon.png",
     "git": {
       "path": "sandbox-templates/flutter",
       "branch": "main",
@@ -18,7 +18,7 @@
     "id": "GlyphyAI-dart",
     "title": "Dart",
     "description": "Kickstart your app development with this Dart CLI template!",
-    "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/dart/.glyphy/icon.png",
+    "iconUrl": "https://raw.githubusercontent.com/GlyphyAI/glyphy-templates/main/sandbox-templates/dart/.glyphy/icon.png",
     "git": {
       "path": "sandbox-templates/dart",
       "branch": "main",
