@@ -12,7 +12,7 @@
       "commitSha": "1c62517032d50c64e100d66f09ee6d77748d7bf2"
     },
     "author": null,
-    "createdAt": "2024-06-17T14:10:43"
+    "createdAt": "2024-06-17T14:10:43+00:00"
   },
   {
     "id": "GlyphyAI-dart",
@@ -27,6 +27,6 @@
       "commitSha": "1c62517032d50c64e100d66f09ee6d77748d7bf2"
     },
     "author": null,
-    "createdAt": "2024-06-17T17:31:19"
+    "createdAt": "2024-06-17T17:31:19+00:00"
   }
 ]
